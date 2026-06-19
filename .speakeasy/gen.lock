@@ -5,12 +5,14 @@ management:
   docVersion: 0.0.1
   speakeasyVersion: 1.784.0
   generationVersion: 2.911.0
-  releaseVersion: 0.0.1
-  configChecksum: 245e25b6513b99222042b5ba615fce5c
+  releaseVersion: 0.0.2
+  configChecksum: 57a7c32f5bd0acb247965768499ed8e2
+  repoURL: https://github.com/mfullbrook/forge-cli.git
+  installationURL: https://github.com/mfullbrook/forge-cli
 persistentEdits:
-  generation_id: 62d5f615-d5f7-446b-ad54-eb45f4e439e0
-  pristine_commit_hash: 87cba572974f24be19d717cd6781e27a2a5f96b0
-  pristine_tree_hash: 3e1e65d081d54dd4b704c69107f111b56930a707
+  generation_id: 77ad34eb-5b6c-4c07-ae4b-07ede170dab5
+  pristine_commit_hash: 3f43db1703bb1246c1e49e44fdecbba3ab702f12
+  pristine_tree_hash: 7171e20b1989bf6f5e8e82b731047e30d68dbe4f
 features:
   cli:
     constsAndDefaults: 0.0.0
@@ -1254,8 +1256,8 @@ trackedFiles:
     pristine_git_object: 1adc09c1d665d1155b70e269c355ae51aae4de50
   internal/cli/version.go:
     id: 7b0665492f72
-    last_write_checksum: sha1:b9990caa616060fb9e2d6867c0c8caf7c30df453
-    pristine_git_object: 039289805761859cd0ed4bb94b23f83aba54d4fc
+    last_write_checksum: sha1:a0325b8a5b97c3c96e8ad48f7690941b1e71a718
+    pristine_git_object: 34e5b886e56669e26f3876a0d1262c3968b69d2d
   internal/cli/whoami.go:
     id: c1787f2298ec
     last_write_checksum: sha1:9aedcc8d4812f010a5089eeed8b1fd47651f8c56
@@ -3470,8 +3472,8 @@ trackedFiles:
     pristine_git_object: 159a87ec97aba99e4edd132f69652e123434303e
   internal/usage/schema.go:
     id: 0f40f4612437
-    last_write_checksum: sha1:c001911a1f0fec3ee9ec4e22d30c34f8befb1f48
-    pristine_git_object: c71caead7434718441e0581c6c07d565e0c29a97
+    last_write_checksum: sha1:92f227d36dcf5501d30cd79bba49b4883ffa5e75
+    pristine_git_object: 5f79bf6b9f578aa2476382c483508ea8afab1a13
   scripts/install.ps1:
     id: fee0853709e9
     last_write_checksum: sha1:9a50de7a9e49abaf65ad00572a35982fe1453a9c
