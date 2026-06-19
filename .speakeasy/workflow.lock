@@ -1,0 +1,29 @@
+speakeasyVersion: 1.784.0
+sources:
+    Forge:
+        sourceNamespace: forge
+        sourceRevisionDigest: sha256:a2a27c49863e3c13eb851383c4c12e92c0f7fc598d535a73b941a0bd7e86cf0b
+        sourceBlobDigest: sha256:27690b61501196943d8990346fbd2be0b487d4d994419cdf656566dc5a53586e
+        tags:
+            - latest
+            - 0.0.1
+targets:
+    laravel-forge:
+        source: Forge
+        sourceNamespace: forge
+        sourceRevisionDigest: sha256:a2a27c49863e3c13eb851383c4c12e92c0f7fc598d535a73b941a0bd7e86cf0b
+        sourceBlobDigest: sha256:27690b61501196943d8990346fbd2be0b487d4d994419cdf656566dc5a53586e
+workflow:
+    workflowVersion: 1.0.0
+    speakeasyVersion: latest
+    sources:
+        Forge:
+            inputs:
+                - location: ./forge.openapi.yaml
+            output: .speakeasy/out.openapi.yaml
+            registry:
+                location: registry.speakeasyapi.dev/kaira-ventures/dev/forge
+    targets:
+        laravel-forge:
+            target: cli
+            source: Forge
