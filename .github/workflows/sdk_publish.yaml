@@ -19,6 +19,6 @@ jobs:
       target: laravel-forge
     secrets:
       cli_gpg_passphrase: ${{ secrets.CLI_GPG_PASSPHRASE }}
-      cli_gpg_private_key: ${{ secrets.CLI_GPG_PRIVATE_KEY }}
+      cli_gpg_secret_key: ${{ secrets.CLI_GPG_PRIVATE_KEY }}
       github_access_token: ${{ secrets.GITHUB_TOKEN }}
       speakeasy_api_key: ${{ secrets.SPEAKEASY_API_KEY }}
