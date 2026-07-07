@@ -1,4 +1,4 @@
-speakeasyVersion: 1.784.0
+speakeasyVersion: 1.789.0
 sources:
     Forge:
         sourceNamespace: forge
@@ -27,3 +27,7 @@ workflow:
         laravel-forge:
             target: cli
             source: Forge
+            publish:
+                cli:
+                    gpgPrivateKey: $cli_gpg_private_key
+                    gpgPassPhrase: $cli_gpg_passphrase
