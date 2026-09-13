@@ -160,6 +160,7 @@ func (u AppType) IsUnknown() bool {
 }
 
 func (u *AppType) UnmarshalJSON(data []byte) error {
+	*u = AppType{}
 
 	var candidates []utils.UnionCandidate
 

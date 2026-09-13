@@ -55,27 +55,21 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
+
+	keychainStored := false
 	if noInteractive, _ := cmd.Flags().GetBool("no-interactive"); noInteractive {
 		changed := false
 		if f := cmd.Flags().Lookup("http"); f != nil && f.Changed {
 			v, _ := cmd.Flags().GetString("http")
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("http", v); err != nil {
-					cfg.Security.Http = v // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Http = v // no keyring, store in config
+			if config.StoreSecret("http", v, &cfg.Security.Http) == nil {
+				keychainStored = true
 			}
 			changed = true
 		}
 		if f := cmd.Flags().Lookup("oauth2"); f != nil && f.Changed {
 			v, _ := cmd.Flags().GetString("oauth2")
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("oauth2", v); err != nil {
-					cfg.Security.Oauth2 = v // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Oauth2 = v // no keyring, store in config
+			if config.StoreSecret("oauth2", v, &cfg.Security.Oauth2) == nil {
+				keychainStored = true
 			}
 			changed = true
 		}
@@ -94,13 +88,13 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 				Title("HTTP Bearer").
 				Description("--http").
 				EchoMode(huh.EchoModePassword).
-				Placeholder(maskSecret(cfg.Security.Http)).
+				Placeholder(maskSecret(config.GetStoredSecret("http", cfg.Security.Http))).
 				Value(&authHttp),
 			huh.NewInput().
 				Title("OAuth2 Authorization").
 				Description("--oauth2").
 				EchoMode(huh.EchoModePassword).
-				Placeholder(maskSecret(cfg.Security.Oauth2)).
+				Placeholder(maskSecret(config.GetStoredSecret("oauth2", cfg.Security.Oauth2))).
 				Value(&authOauth2),
 		}
 		groups = append(groups, huh.NewGroup(securityFields...).Title("Authentication"))
@@ -137,22 +131,14 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("configure: %w", err)
 		}
 		if authHttp != "" {
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("http", authHttp); err != nil {
-					cfg.Security.Http = authHttp // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Http = authHttp // no keyring, store in config
+			if config.StoreSecret("http", authHttp, &cfg.Security.Http) == nil {
+				keychainStored = true
 			}
 		}
 
 		if authOauth2 != "" {
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("oauth2", authOauth2); err != nil {
-					cfg.Security.Oauth2 = authOauth2 // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Oauth2 = authOauth2 // no keyring, store in config
+			if config.StoreSecret("oauth2", authOauth2, &cfg.Security.Oauth2) == nil {
+				keychainStored = true
 			}
 		}
 		if !accessible {
@@ -170,7 +156,7 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	if config.KeyringAvailable() {
+	if keychainStored {
 		fmt.Fprintln(out, "Secret credentials stored in OS keychain")
 	}
 	fmt.Fprintf(out, "Configuration saved to %s\n", config.GetConfigPath())
