@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesLoadBalancingNodesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `id`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-id`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
@@ -29,9 +28,13 @@ func initOrganizationsServersSitesLoadBalancingNodesIndexCmd(parent *cobra.Comma
 		Use:     "organizations-servers-sites-load-balancing-nodes-index",
 		Short:   "List load balancing nodes",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-load-balancing-nodes-index --organization <value> --server 191939 --site 196331",
+		Example: "  forge sites organizations-servers-sites-load-balancing-nodes-index --organization <value> --server-param 191939 --site 196331",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesLoadBalancingNodesIndexCmd,
 		Aliases: []string{"osslbni"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.load-balancing-nodes.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesLoadBalancingNodesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesLoadBalancingNodesIndexRequest](organizationsServersSitesLoadBalancingNodesIndexCmdMeta); err != nil {
@@ -46,16 +49,11 @@ func runOrganizationsServersSitesLoadBalancingNodesIndexCmd(cmd *cobra.Command, 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesLoadBalancingNodesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesLoadBalancingNodesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesLoadBalancingNodesIndexRequest](cmd, organizationsServersSitesLoadBalancingNodesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

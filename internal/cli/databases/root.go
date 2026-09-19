@@ -9,9 +9,11 @@ import (
 
 func InitDatabasesRoot(parent *cobra.Command) error {
 	var DatabasesCmd = &cobra.Command{
-		Use:   "databases",
-		Short: "Operations for databases",
-		Long:  "Operations for databases",
+		Use:         "databases",
+		Short:       "Operations for databases",
+		Long:        "Operations for databases",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

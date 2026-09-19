@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,10 +15,10 @@ import (
 
 var organizationsServersSitesIntegrationsOctaneStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "body-param.port", FieldPath: "Body.Port", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
-	{FlagName: "body-param.server", FieldPath: "Body.Server", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"swoole", "roadrunner", "frankenphp"}, Description: "options: swoole, roadrunner, frankenphp [required]"},
+	{FlagName: "body-param.server-param", FieldPath: "Body.Server", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"swoole", "roadrunner", "frankenphp"}, Description: "options: swoole, roadrunner, frankenphp [required]"},
 }
 
 // initOrganizationsServersSitesIntegrationsOctaneStoreCmd initializes the organizations-servers-sites-integrations-octane-store command.
@@ -28,15 +27,26 @@ func initOrganizationsServersSitesIntegrationsOctaneStoreCmd(parent *cobra.Comma
 		Use:     "organizations-servers-sites-integrations-octane-store",
 		Short:   "Create Laravel Octane integration",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-octane-store --organization <value> --server 533369 --site 154947 --body-param.port <value> --body-param.server swoole",
+		Example: "  forge integrations organizations-servers-sites-integrations-octane-store --organization <value> --server-param 533369 --site 154947 --body-param.port <value> --body-param.server-param swoole",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsOctaneStoreCmd,
 		Aliases: []string{"ossiost"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.octane.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsOctaneStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsOctaneStoreRequest](organizationsServersSitesIntegrationsOctaneStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-integrations-octane-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesIntegrationsOctaneStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-integrations-octane-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -46,16 +56,14 @@ func runOrganizationsServersSitesIntegrationsOctaneStoreCmd(cmd *cobra.Command, 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsOctaneStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsOctaneStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.integrations.octane.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsOctaneStoreRequest](cmd, organizationsServersSitesIntegrationsOctaneStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

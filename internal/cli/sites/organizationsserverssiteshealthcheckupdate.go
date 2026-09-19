@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesHealthcheckUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "healthcheck-endpoint", FieldPath: "Body.HealthcheckEndpoint", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"healthcheck_endpoint,omitempty"`, Description: "The endpoint / URL that should be used to perform healthchecks."},
 }
@@ -27,15 +26,26 @@ func initOrganizationsServersSitesHealthcheckUpdateCmd(parent *cobra.Command) er
 		Use:     "organizations-servers-sites-healthcheck-update",
 		Short:   "Update healthcheck endpoint",
 		Long:    "Update the healthcheck endpoint for the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-healthcheck-update --organization <value> --server 363701 --site 107477",
+		Example: "  forge sites organizations-servers-sites-healthcheck-update --organization <value> --server-param 363701 --site 107477",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesHealthcheckUpdateCmd,
 		Aliases: []string{"osshu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.healthcheck.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesHealthcheckUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesHealthcheckUpdateRequest](organizationsServersSitesHealthcheckUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-healthcheck-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesHealthcheckUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-healthcheck-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -45,16 +55,14 @@ func runOrganizationsServersSitesHealthcheckUpdateCmd(cmd *cobra.Command, args [
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesHealthcheckUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesHealthcheckUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.healthcheck.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesHealthcheckUpdateRequest](cmd, organizationsServersSitesHealthcheckUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

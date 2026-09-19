@@ -9,9 +9,11 @@ import (
 
 func InitCommandsRoot(parent *cobra.Command) error {
 	var CommandsCmd = &cobra.Command{
-		Use:   "commands",
-		Short: "Operations for commands",
-		Long:  "Operations for commands",
+		Use:         "commands",
+		Short:       "Operations for commands",
+		Long:        "Operations for commands",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

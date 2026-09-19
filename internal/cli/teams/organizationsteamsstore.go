@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -28,14 +27,25 @@ func initOrganizationsTeamsStoreCmd(parent *cobra.Command) error {
 		Short:   "Create team",
 		Long:    "Create a new team for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge teams organizations-teams-store --organization <value> --name <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsStoreCmd,
 		Aliases: []string{"otst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsStoreRequest](organizationsTeamsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-teams-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsTeamsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-teams-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -45,16 +55,14 @@ func runOrganizationsTeamsStoreCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.teams.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsStoreRequest](cmd, organizationsTeamsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

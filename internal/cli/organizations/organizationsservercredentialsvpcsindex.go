@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initOrganizationsServerCredentialsVpcsIndexCmd(parent *cobra.Command) error
 		Short:   "List VPCs",
 		Long:    "List VPCs for the provider.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge organizations server-credentials-vpcs-index --organization <value> --credential 55726 --region <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServerCredentialsVpcsIndexCmd,
 		Aliases: []string{"scvi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.server-credentials.vpcs.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServerCredentialsVpcsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServerCredentialsVpcsIndexRequest](organizationsServerCredentialsVpcsIndexCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServerCredentialsVpcsIndexCmd(cmd *cobra.Command, args []st
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServerCredentialsVpcsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServerCredentialsVpcsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServerCredentialsVpcsIndexRequest](cmd, organizationsServerCredentialsVpcsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

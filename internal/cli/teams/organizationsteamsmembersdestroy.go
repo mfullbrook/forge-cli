@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initOrganizationsTeamsMembersDestroyCmd(parent *cobra.Command) error {
 		Short:   "Delete team member",
 		Long:    "Remove a member from the team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge teams organizations-teams-members-destroy --organization <value> --team 776514 --user 810403",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsMembersDestroyCmd,
 		Aliases: []string{"otmd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.members.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsMembersDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsMembersDestroyRequest](organizationsTeamsMembersDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsTeamsMembersDestroyCmd(cmd *cobra.Command, args []string) e
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsMembersDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsMembersDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsMembersDestroyRequest](cmd, organizationsTeamsMembersDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

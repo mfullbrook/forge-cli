@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initProvidersRegionsIndexCmd(parent *cobra.Command) error {
 		Short:   "List provider regions",
 		Long:    "Show all provider regions\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge providers regions-index --provider 596245",
+		Args:    cobra.NoArgs,
 		RunE:    runProvidersRegionsIndexCmd,
 		Aliases: []string{"ri"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "providers.regions.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, providersRegionsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.ProvidersRegionsIndexRequest](providersRegionsIndexCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runProvidersRegionsIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, providersRegionsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, providersRegionsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.ProvidersRegionsIndexRequest](cmd, providersRegionsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

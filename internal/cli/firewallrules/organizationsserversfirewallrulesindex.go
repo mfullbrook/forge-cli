@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersFirewallRulesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-created_at`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
@@ -33,9 +32,13 @@ func initOrganizationsServersFirewallRulesIndexCmd(parent *cobra.Command) error 
 		Use:     "organizations-servers-firewall-rules-index",
 		Short:   "List server firewall rules",
 		Long:    "List all firewall rules associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge firewall-rules organizations-servers-firewall-rules-index --organization <value> --server 525552",
+		Example: "  forge firewall-rules organizations-servers-firewall-rules-index --organization <value> --server-param 525552",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersFirewallRulesIndexCmd,
 		Aliases: []string{"osfri"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.firewall-rules.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersFirewallRulesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersFirewallRulesIndexRequest](organizationsServersFirewallRulesIndexCmdMeta); err != nil {
@@ -50,16 +53,11 @@ func runOrganizationsServersFirewallRulesIndexCmd(cmd *cobra.Command, args []str
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersFirewallRulesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersFirewallRulesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersFirewallRulesIndexRequest](cmd, organizationsServersFirewallRulesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

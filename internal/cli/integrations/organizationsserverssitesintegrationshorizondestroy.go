@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsHorizonDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsHorizonDestroyCmd(parent *cobra.Co
 		Use:     "organizations-servers-sites-integrations-horizon-destroy",
 		Short:   "Delete Laravel Horizon integration",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-horizon-destroy --organization <value> --server 397811 --site 487861",
+		Example: "  forge integrations organizations-servers-sites-integrations-horizon-destroy --organization <value> --server-param 397811 --site 487861",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsHorizonDestroyCmd,
 		Aliases: []string{"ossihd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.horizon.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsHorizonDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsHorizonDestroyRequest](organizationsServersSitesIntegrationsHorizonDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsHorizonDestroyCmd(cmd *cobra.Comman
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsHorizonDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsHorizonDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsHorizonDestroyRequest](cmd, organizationsServersSitesIntegrationsHorizonDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

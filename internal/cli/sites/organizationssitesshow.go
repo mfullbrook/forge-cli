@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initOrganizationsSitesShowCmd(parent *cobra.Command) error {
 		Short:   "Get site",
 		Long:    "Show the specified site.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge sites organizations-sites-show --organization <value> --site 270713",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsSitesShowCmd,
 		Aliases: []string{"oss"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.sites.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsSitesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsSitesShowRequest](organizationsSitesShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsSitesShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsSitesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsSitesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsSitesShowRequest](cmd, organizationsSitesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

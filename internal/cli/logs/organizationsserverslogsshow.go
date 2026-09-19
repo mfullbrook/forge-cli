@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersLogsShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "key", Shorthand: "k", FieldPath: "Key", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersLogsShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-logs-show",
 		Short:   "Get server log content",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge logs organizations-servers-logs-show --organization <value> --server 678361 --key <key>",
+		Example: "  forge logs organizations-servers-logs-show --organization <value> --server-param 678361 --key <key>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersLogsShowCmd,
 		Aliases: []string{"osls"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.logs.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersLogsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersLogsShowRequest](organizationsServersLogsShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersLogsShowCmd(cmd *cobra.Command, args []string) error
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersLogsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersLogsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersLogsShowRequest](cmd, organizationsServersLogsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

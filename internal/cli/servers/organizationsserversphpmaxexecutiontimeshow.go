@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpMaxExecutionTimeShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersPhpMaxExecutionTimeShowCmd initializes the organizations-servers-php-max-execution-time-show command.
@@ -25,9 +24,13 @@ func initOrganizationsServersPhpMaxExecutionTimeShowCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-php-max-execution-time-show",
 		Short:   "Get server PHP max execution time",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-php-max-execution-time-show --organization <value> --server 202050",
+		Example: "  forge servers organizations-servers-php-max-execution-time-show --organization <value> --server-param 202050",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpMaxExecutionTimeShowCmd,
 		Aliases: []string{"ospmets"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.max-execution-time.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpMaxExecutionTimeShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpMaxExecutionTimeShowRequest](organizationsServersPhpMaxExecutionTimeShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersPhpMaxExecutionTimeShowCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpMaxExecutionTimeShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpMaxExecutionTimeShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpMaxExecutionTimeShowRequest](cmd, organizationsServersPhpMaxExecutionTimeShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

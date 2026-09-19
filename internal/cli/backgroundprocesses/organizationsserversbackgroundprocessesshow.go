@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersBackgroundProcessesShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "background-process", Shorthand: "b", FieldPath: "BackgroundProcess", Kind: flagutil.FlagKindInt64, Required: true, Description: "The background process ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersBackgroundProcessesShowCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-background-processes-show",
 		Short:   "Get background process",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge background-processes organizations-servers-background-processes-show --organization <value> --server 336730 --background-process 953987",
+		Example: "  forge background-processes organizations-servers-background-processes-show --organization <value> --server-param 336730 --background-process 953987",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersBackgroundProcessesShowCmd,
 		Aliases: []string{"osbps"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.background-processes.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersBackgroundProcessesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersBackgroundProcessesShowRequest](organizationsServersBackgroundProcessesShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersBackgroundProcessesShowCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersBackgroundProcessesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersBackgroundProcessesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersBackgroundProcessesShowRequest](cmd, organizationsServersBackgroundProcessesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

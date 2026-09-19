@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesCommandsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "command", Shorthand: "c", FieldPath: "Body.Command", Kind: flagutil.FlagKindString, Required: true, Description: "The command to run. [required]"},
 }
@@ -27,15 +26,26 @@ func initOrganizationsServersSitesCommandsStoreCmd(parent *cobra.Command) error 
 		Use:     "organizations-servers-sites-commands-store",
 		Short:   "Create command",
 		Long:    "Run a command on the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge commands organizations-servers-sites-commands-store --organization <value> --server 586921 --site 329901 --command nvm use 22",
+		Example: "  forge commands organizations-servers-sites-commands-store --organization <value> --server-param 586921 --site 329901 --command nvm use 22",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesCommandsStoreCmd,
 		Aliases: []string{"osscst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.commands.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesCommandsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesCommandsStoreRequest](organizationsServersSitesCommandsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-commands-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesCommandsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-commands-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -45,16 +55,14 @@ func runOrganizationsServersSitesCommandsStoreCmd(cmd *cobra.Command, args []str
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesCommandsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesCommandsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.commands.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesCommandsStoreRequest](cmd, organizationsServersSitesCommandsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

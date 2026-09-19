@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseUsersUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "database-user", FieldPath: "DatabaseUser", Kind: flagutil.FlagKindInt64, Required: true, Description: "The database user ID [required]"},
 	{FlagName: "password", Shorthand: "p", FieldPath: "Body.Password", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"password,omitempty"`, Description: "The password for the database user."},
 	{FlagName: "database-ids", FieldPath: "Body.DatabaseIds", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"database_ids,omitempty"`, Description: "The IDs of the databases to assign the user to."},
@@ -28,15 +27,26 @@ func initOrganizationsServersDatabaseUsersUpdateCmd(parent *cobra.Command) error
 		Use:     "organizations-servers-database-users-update",
 		Short:   "Update database user",
 		Long:    "Update a database user on the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge databases organizations-servers-database-users-update --organization <value> --server 31386 --database-user 984094",
+		Example: "  forge databases organizations-servers-database-users-update --organization <value> --server-param 31386 --database-user 984094",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseUsersUpdateCmd,
 		Aliases: []string{"osduu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.users.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseUsersUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseUsersUpdateRequest](organizationsServersDatabaseUsersUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-database-users-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersDatabaseUsersUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-database-users-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -46,16 +56,14 @@ func runOrganizationsServersDatabaseUsersUpdateCmd(cmd *cobra.Command, args []st
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseUsersUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseUsersUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.database.users.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseUsersUpdateRequest](cmd, organizationsServersDatabaseUsersUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

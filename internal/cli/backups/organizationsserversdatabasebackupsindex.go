@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseBackupsIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `name`, `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-name`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
@@ -30,9 +29,13 @@ func initOrganizationsServersDatabaseBackupsIndexCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-database-backups-index",
 		Short:   "List backup configurations",
 		Long:    "List all backup configurations for the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge backups organizations-servers-database-backups-index --organization <value> --server 640876",
+		Example: "  forge backups organizations-servers-database-backups-index --organization <value> --server-param 640876",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseBackupsIndexCmd,
 		Aliases: []string{"osdbi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.backups.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseBackupsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseBackupsIndexRequest](organizationsServersDatabaseBackupsIndexCmdMeta); err != nil {
@@ -47,16 +50,11 @@ func runOrganizationsServersDatabaseBackupsIndexCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseBackupsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseBackupsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseBackupsIndexRequest](cmd, organizationsServersDatabaseBackupsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

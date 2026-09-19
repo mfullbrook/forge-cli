@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersNginxTemplatesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `created_at`, `updated_at`, `name`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-created_at`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
@@ -29,9 +28,13 @@ func initOrganizationsServersNginxTemplatesIndexCmd(parent *cobra.Command) error
 		Use:     "organizations-servers-nginx-templates-index",
 		Short:   "List Nginx templates",
 		Long:    "List all nginx templates for the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge nginx organizations-servers-nginx-templates-index --organization <value> --server 429029",
+		Example: "  forge nginx organizations-servers-nginx-templates-index --organization <value> --server-param 429029",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersNginxTemplatesIndexCmd,
 		Aliases: []string{"osnti"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.nginx.templates.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersNginxTemplatesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersNginxTemplatesIndexRequest](organizationsServersNginxTemplatesIndexCmdMeta); err != nil {
@@ -46,16 +49,11 @@ func runOrganizationsServersNginxTemplatesIndexCmd(cmd *cobra.Command, args []st
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersNginxTemplatesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersNginxTemplatesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersNginxTemplatesIndexRequest](cmd, organizationsServersNginxTemplatesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

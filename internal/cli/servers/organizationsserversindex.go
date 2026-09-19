@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -36,8 +35,12 @@ func initOrganizationsServersIndexCmd(parent *cobra.Command) error {
 		Short:   "List servers",
 		Long:    "Show all servers for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge servers organizations-servers-index --organization <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersIndexCmd,
 		Aliases: []string{"osi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersIndexRequest](organizationsServersIndexCmdMeta); err != nil {
@@ -52,16 +55,11 @@ func runOrganizationsServersIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersIndexRequest](cmd, organizationsServersIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

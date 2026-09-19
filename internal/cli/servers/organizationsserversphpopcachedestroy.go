@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpOpcacheDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersPhpOpcacheDestroyCmd initializes the organizations-servers-php-opcache-destroy command.
@@ -25,9 +24,13 @@ func initOrganizationsServersPhpOpcacheDestroyCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-php-opcache-destroy",
 		Short:   "Delete PHP OPcache config",
 		Long:    "Disable PHP OPcache for the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-php-opcache-destroy --organization <value> --server 994940",
+		Example: "  forge servers organizations-servers-php-opcache-destroy --organization <value> --server-param 994940",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpOpcacheDestroyCmd,
 		Aliases: []string{"ospod"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.opcache.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpOpcacheDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpOpcacheDestroyRequest](organizationsServersPhpOpcacheDestroyCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersPhpOpcacheDestroyCmd(cmd *cobra.Command, args []stri
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpOpcacheDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpOpcacheDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpOpcacheDestroyRequest](cmd, organizationsServersPhpOpcacheDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

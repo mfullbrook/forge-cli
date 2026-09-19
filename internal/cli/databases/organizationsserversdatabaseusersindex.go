@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseUsersIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `name`, `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-name`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
@@ -30,9 +29,13 @@ func initOrganizationsServersDatabaseUsersIndexCmd(parent *cobra.Command) error 
 		Use:     "organizations-servers-database-users-index",
 		Short:   "List database users",
 		Long:    "List all database users associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge databases organizations-servers-database-users-index --organization <value> --server 38940",
+		Example: "  forge databases organizations-servers-database-users-index --organization <value> --server-param 38940",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseUsersIndexCmd,
 		Aliases: []string{"osdui"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.users.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseUsersIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseUsersIndexRequest](organizationsServersDatabaseUsersIndexCmdMeta); err != nil {
@@ -47,16 +50,11 @@ func runOrganizationsServersDatabaseUsersIndexCmd(cmd *cobra.Command, args []str
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseUsersIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseUsersIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseUsersIndexRequest](cmd, organizationsServersDatabaseUsersIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

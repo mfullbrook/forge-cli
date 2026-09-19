@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initOrganizationsTeamsMembersShowCmd(parent *cobra.Command) error {
 		Short:   "Get team member",
 		Long:    "Show the team member for the team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge teams organizations-teams-members-show --organization <value> --team 202772 --user 563708",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsMembersShowCmd,
 		Aliases: []string{"otms"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.members.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsMembersShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsMembersShowRequest](organizationsTeamsMembersShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsTeamsMembersShowCmd(cmd *cobra.Command, args []string) erro
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsMembersShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsMembersShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsMembersShowRequest](cmd, organizationsTeamsMembersShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

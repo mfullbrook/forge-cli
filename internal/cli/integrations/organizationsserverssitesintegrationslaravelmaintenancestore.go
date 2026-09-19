@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsLaravelMaintenanceStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "secret", FieldPath: "Body.Secret", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"secret,omitempty"`, Description: "The secret phrase that allows access to the application while in maintenance mode."},
 	{FlagName: "status", FieldPath: "Body.Status", Kind: flagutil.FlagKindIntEnum, Required: true, EnumValues: []string{"304", "307", "410", "503"}, Description: "options: 304, 307, 410, 503 [required]"},
@@ -29,15 +28,26 @@ func initOrganizationsServersSitesIntegrationsLaravelMaintenanceStoreCmd(parent 
 		Use:     "organizations-servers-sites-integrations-laravel-maintenance-store",
 		Short:   "Create Laravel Maintenance integration",
 		Long:    "Enable maintenance mode for the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-laravel-maintenance-store --organization <value> --server 696276 --site 480485 --status 304",
+		Example: "  forge integrations organizations-servers-sites-integrations-laravel-maintenance-store --organization <value> --server-param 696276 --site 480485 --status 304",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsLaravelMaintenanceStoreCmd,
 		Aliases: []string{"ossilmst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.laravel-maintenance.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsLaravelMaintenanceStoreRequest](organizationsServersSitesIntegrationsLaravelMaintenanceStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-integrations-laravel-maintenance-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-integrations-laravel-maintenance-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -47,16 +57,14 @@ func runOrganizationsServersSitesIntegrationsLaravelMaintenanceStoreCmd(cmd *cob
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.integrations.laravel-maintenance.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsLaravelMaintenanceStoreRequest](cmd, organizationsServersSitesIntegrationsLaravelMaintenanceStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

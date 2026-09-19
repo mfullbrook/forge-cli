@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpOpcacheStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersPhpOpcacheStoreCmd initializes the organizations-servers-php-opcache-store command.
@@ -25,9 +24,13 @@ func initOrganizationsServersPhpOpcacheStoreCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-php-opcache-store",
 		Short:   "Create PHP OPcache config",
 		Long:    "Enable PHP OPcache for the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-php-opcache-store --organization <value> --server 220768",
+		Example: "  forge servers organizations-servers-php-opcache-store --organization <value> --server-param 220768",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpOpcacheStoreCmd,
 		Aliases: []string{"ospost"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.opcache.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpOpcacheStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpOpcacheStoreRequest](organizationsServersPhpOpcacheStoreCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersPhpOpcacheStoreCmd(cmd *cobra.Command, args []string
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpOpcacheStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpOpcacheStoreCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpOpcacheStoreRequest](cmd, organizationsServersPhpOpcacheStoreCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -28,8 +27,12 @@ func initOrganizationsServersArchivesIndexCmd(parent *cobra.Command) error {
 		Short:   "List archived servers",
 		Long:    "Get all archived servers for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge servers organizations-servers-archives-index --organization <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersArchivesIndexCmd,
 		Aliases: []string{"osai"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.archives.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersArchivesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersArchivesIndexRequest](organizationsServersArchivesIndexCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersArchivesIndexCmd(cmd *cobra.Command, args []string) 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersArchivesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersArchivesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersArchivesIndexRequest](cmd, organizationsServersArchivesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

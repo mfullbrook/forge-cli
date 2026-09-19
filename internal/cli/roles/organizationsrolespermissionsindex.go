@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -29,8 +28,12 @@ func initOrganizationsRolesPermissionsIndexCmd(parent *cobra.Command) error {
 		Short:   "List role permissions",
 		Long:    "Show all permissions for the role.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge roles organizations-roles-permissions-index --organization <value> --role 734148",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsRolesPermissionsIndexCmd,
 		Aliases: []string{"orpi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.roles.permissions.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsRolesPermissionsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsRolesPermissionsIndexRequest](organizationsRolesPermissionsIndexCmdMeta); err != nil {
@@ -45,16 +48,11 @@ func runOrganizationsRolesPermissionsIndexCmd(cmd *cobra.Command, args []string)
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsRolesPermissionsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsRolesPermissionsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsRolesPermissionsIndexRequest](cmd, organizationsRolesPermissionsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}
