@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersEventsIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-created_at`."},
 	{FlagName: "include", Shorthand: "i", FieldPath: "Include", Kind: flagutil.FlagKindString, Optional: true, Description: "Available includes are `initiator`, `initiatorCount`, `initiatorExists`. You can include multiple options by separating them with a comma."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
@@ -31,9 +30,13 @@ func initOrganizationsServersEventsIndexCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-events-index",
 		Short:   "List server events",
 		Long:    "List all events associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-events-index --organization <value> --server 576680",
+		Example: "  forge servers organizations-servers-events-index --organization <value> --server-param 576680",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersEventsIndexCmd,
 		Aliases: []string{"osei"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.events.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersEventsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersEventsIndexRequest](organizationsServersEventsIndexCmdMeta); err != nil {
@@ -48,16 +51,11 @@ func runOrganizationsServersEventsIndexCmd(cmd *cobra.Command, args []string) er
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersEventsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersEventsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersEventsIndexRequest](cmd, organizationsServersEventsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesSecurityRulesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `path`, `status`, `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-path`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
@@ -31,9 +30,13 @@ func initOrganizationsServersSitesSecurityRulesIndexCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-sites-security-rules-index",
 		Short:   "List site security rules",
 		Long:    "List all security rules associated with the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge security-rules organizations-servers-sites-security-rules-index --organization <value> --server 863470 --site 589556",
+		Example: "  forge security-rules organizations-servers-sites-security-rules-index --organization <value> --server-param 863470 --site 589556",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesSecurityRulesIndexCmd,
 		Aliases: []string{"osssri"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.security-rules.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesSecurityRulesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesSecurityRulesIndexRequest](organizationsServersSitesSecurityRulesIndexCmdMeta); err != nil {
@@ -48,16 +51,11 @@ func runOrganizationsServersSitesSecurityRulesIndexCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesSecurityRulesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesSecurityRulesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesSecurityRulesIndexRequest](cmd, organizationsServersSitesSecurityRulesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

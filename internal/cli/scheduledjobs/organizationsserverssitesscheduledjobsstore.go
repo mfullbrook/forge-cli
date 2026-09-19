@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesScheduledJobsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"name,omitempty"`, Description: "The name of the command."},
 	{FlagName: "command", FieldPath: "Body.Command", Kind: flagutil.FlagKindString, Required: true, Description: "The command to run. [required]"},
@@ -33,15 +32,26 @@ func initOrganizationsServersSitesScheduledJobsStoreCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-sites-scheduled-jobs-store",
 		Short:   "Create site scheduled job",
 		Long:    "Create a specific scheduled job for the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge scheduled-jobs organizations-servers-sites-scheduled-jobs-store --organization <value> --server 181290 --site 944759 --command echo $(whoami) --user root",
+		Example: "  forge scheduled-jobs organizations-servers-sites-scheduled-jobs-store --organization <value> --server-param 181290 --site 944759 --command echo $(whoami) --user root",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesScheduledJobsStoreCmd,
 		Aliases: []string{"osssjst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.scheduled-jobs.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesScheduledJobsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesScheduledJobsStoreRequest](organizationsServersSitesScheduledJobsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-scheduled-jobs-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesScheduledJobsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-scheduled-jobs-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -51,16 +61,14 @@ func runOrganizationsServersSitesScheduledJobsStoreCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesScheduledJobsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesScheduledJobsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.scheduled-jobs.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesScheduledJobsStoreRequest](cmd, organizationsServersSitesScheduledJobsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -9,9 +9,11 @@ import (
 
 func InitFirewallRulesRoot(parent *cobra.Command) error {
 	var FirewallRulesCmd = &cobra.Command{
-		Use:   "firewall-rules",
-		Short: "Operations for firewall-rules",
-		Long:  "Operations for firewall-rules",
+		Use:         "firewall-rules",
+		Short:       "Operations for firewall-rules",
+		Long:        "Operations for firewall-rules",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

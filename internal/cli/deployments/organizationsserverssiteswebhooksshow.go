@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesWebhooksShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "deployment-webhook", FieldPath: "DeploymentWebhook", Kind: flagutil.FlagKindInt64, Required: true, Description: "The deployment webhook ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesWebhooksShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-sites-webhooks-show",
 		Short:   "Get site webhook",
 		Long:    "Get a specific webhook associated with the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge deployments organizations-servers-sites-webhooks-show --organization <value> --server 445019 --site 859219 --deployment-webhook 151451",
+		Example: "  forge deployments organizations-servers-sites-webhooks-show --organization <value> --server-param 445019 --site 859219 --deployment-webhook 151451",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesWebhooksShowCmd,
 		Aliases: []string{"ossws"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.webhooks.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesWebhooksShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesWebhooksShowRequest](organizationsServersSitesWebhooksShowCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesWebhooksShowCmd(cmd *cobra.Command, args []stri
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesWebhooksShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesWebhooksShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesWebhooksShowRequest](cmd, organizationsServersSitesWebhooksShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

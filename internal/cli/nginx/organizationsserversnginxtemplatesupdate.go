@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersNginxTemplatesUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "nginx-template", FieldPath: "NginxTemplate", Kind: flagutil.FlagKindInt64, Required: true, Description: "The nginx template ID [required]"},
 	{FlagName: "name", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Required: true, Description: "The name of the nginx template. [required]"},
 	{FlagName: "content", Shorthand: "c", FieldPath: "Body.Content", Kind: flagutil.FlagKindString, Required: true, Description: "The content of the nginx template. [required]"},
@@ -28,15 +27,26 @@ func initOrganizationsServersNginxTemplatesUpdateCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-nginx-templates-update",
 		Short:   "Update Nginx template",
 		Long:    "Update the specified nginx template on the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge nginx organizations-servers-nginx-templates-update --organization <value> --server 910924 --nginx-template 825505 --name <value> --content <value>",
+		Example: "  forge nginx organizations-servers-nginx-templates-update --organization <value> --server-param 910924 --nginx-template 825505 --name <value> --content <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersNginxTemplatesUpdateCmd,
 		Aliases: []string{"osntu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.nginx.templates.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersNginxTemplatesUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersNginxTemplatesUpdateRequest](organizationsServersNginxTemplatesUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-nginx-templates-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersNginxTemplatesUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-nginx-templates-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -46,16 +56,14 @@ func runOrganizationsServersNginxTemplatesUpdateCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersNginxTemplatesUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersNginxTemplatesUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.nginx.templates.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersNginxTemplatesUpdateRequest](cmd, organizationsServersNginxTemplatesUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

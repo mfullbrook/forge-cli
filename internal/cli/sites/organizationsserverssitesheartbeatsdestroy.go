@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesHeartbeatsDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "heartbeat", FieldPath: "Heartbeat", Kind: flagutil.FlagKindInt64, Required: true, Description: "The heartbeat ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesHeartbeatsDestroyCmd(parent *cobra.Command) er
 		Use:     "organizations-servers-sites-heartbeats-destroy",
 		Short:   "Delete heartbeat",
 		Long:    "Delete a specific heartbeat for the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-heartbeats-destroy --organization <value> --server 410599 --site 762394 --heartbeat 437050",
+		Example: "  forge sites organizations-servers-sites-heartbeats-destroy --organization <value> --server-param 410599 --site 762394 --heartbeat 437050",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesHeartbeatsDestroyCmd,
 		Aliases: []string{"osshd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.heartbeats.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesHeartbeatsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesHeartbeatsDestroyRequest](organizationsServersSitesHeartbeatsDestroyCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesHeartbeatsDestroyCmd(cmd *cobra.Command, args [
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesHeartbeatsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesHeartbeatsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesHeartbeatsDestroyRequest](cmd, organizationsServersSitesHeartbeatsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

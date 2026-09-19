@@ -9,9 +9,11 @@ import (
 
 func InitSitesRoot(parent *cobra.Command) error {
 	var SitesCmd = &cobra.Command{
-		Use:   "sites",
-		Short: "Operations for sites",
-		Long:  "Operations for sites",
+		Use:         "sites",
+		Short:       "Operations for sites",
+		Long:        "Operations for sites",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

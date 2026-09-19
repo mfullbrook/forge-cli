@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersServicesRedisActionsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "action", Shorthand: "a", FieldPath: "Body.Action", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"reboot"}, Description: "| |\n|---|\n| `reboot` <br/> Reboot the Redis service | (options: reboot) [required]"},
 }
 
@@ -26,15 +25,26 @@ func initOrganizationsServersServicesRedisActionsStoreCmd(parent *cobra.Command)
 		Use:     "organizations-servers-services-redis-actions-store",
 		Short:   "Perform Redis action",
 		Long:    "Run an action on the Redis service.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-services-redis-actions-store --organization <value> --server 338016 --action reboot",
+		Example: "  forge servers organizations-servers-services-redis-actions-store --organization <value> --server-param 338016 --action reboot",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersServicesRedisActionsStoreCmd,
 		Aliases: []string{"ossras"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.services.redis.actions.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersServicesRedisActionsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersServicesRedisActionsStoreRequest](organizationsServersServicesRedisActionsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-services-redis-actions-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersServicesRedisActionsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-services-redis-actions-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -44,16 +54,14 @@ func runOrganizationsServersServicesRedisActionsStoreCmd(cmd *cobra.Command, arg
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersServicesRedisActionsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersServicesRedisActionsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.services.redis.actions.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersServicesRedisActionsStoreRequest](cmd, organizationsServersServicesRedisActionsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

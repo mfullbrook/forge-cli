@@ -9,9 +9,11 @@ import (
 
 func InitSecurityRulesRoot(parent *cobra.Command) error {
 	var SecurityRulesCmd = &cobra.Command{
-		Use:   "security-rules",
-		Short: "Operations for security-rules",
-		Long:  "Operations for security-rules",
+		Use:         "security-rules",
+		Short:       "Operations for security-rules",
+		Long:        "Operations for security-rules",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initOrganizationsServerCredentialsShowCmd(parent *cobra.Command) error {
 		Short:   "Get server credential",
 		Long:    "Show a specific server credential for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge organizations server-credentials-show --organization <value> --credential 129940",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServerCredentialsShowCmd,
 		Aliases: []string{"scs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.server-credentials.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServerCredentialsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServerCredentialsShowRequest](organizationsServerCredentialsShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServerCredentialsShowCmd(cmd *cobra.Command, args []string)
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServerCredentialsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServerCredentialsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServerCredentialsShowRequest](cmd, organizationsServerCredentialsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

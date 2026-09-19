@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSSHKeysIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
 	{FlagName: "filter-name", FieldPath: "FilterName", Kind: flagutil.FlagKindString, Optional: true, Description: "string value"},
@@ -29,9 +28,13 @@ func initOrganizationsServersSshKeysIndexCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-ssh-keys-index",
 		Short:   "List server SSH keys",
 		Long:    "List all SSH keys associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge SSH-keys organizations-servers-ssh-keys-index --organization <value> --server 776247",
+		Example: "  forge SSH-keys organizations-servers-ssh-keys-index --organization <value> --server-param 776247",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSshKeysIndexCmd,
 		Aliases: []string{"osski"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.ssh-keys.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSSHKeysIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSSHKeysIndexRequest](organizationsServersSSHKeysIndexCmdMeta); err != nil {
@@ -46,16 +49,11 @@ func runOrganizationsServersSshKeysIndexCmd(cmd *cobra.Command, args []string) e
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSSHKeysIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSSHKeysIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSSHKeysIndexRequest](cmd, organizationsServersSSHKeysIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

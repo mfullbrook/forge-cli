@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesLogsApplicationDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesLogsApplicationDestroyCmd(parent *cobra.Comman
 		Use:     "organizations-servers-sites-logs-application-destroy",
 		Short:   "Delete site log content",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-logs-application-destroy --organization <value> --server 584127 --site 440770",
+		Example: "  forge sites organizations-servers-sites-logs-application-destroy --organization <value> --server-param 584127 --site 440770",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesLogsApplicationDestroyCmd,
 		Aliases: []string{"osslad"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.logs.application.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesLogsApplicationDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesLogsApplicationDestroyRequest](organizationsServersSitesLogsApplicationDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesLogsApplicationDestroyCmd(cmd *cobra.Command, a
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesLogsApplicationDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesLogsApplicationDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesLogsApplicationDestroyRequest](cmd, organizationsServersSitesLogsApplicationDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

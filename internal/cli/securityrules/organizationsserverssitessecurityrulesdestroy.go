@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesSecurityRulesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "security-rule", FieldPath: "SecurityRule", Kind: flagutil.FlagKindInt64, Required: true, Description: "The security rule ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesSecurityRulesDestroyCmd(parent *cobra.Command)
 		Use:     "organizations-servers-sites-security-rules-destroy",
 		Short:   "Delete site security rule",
 		Long:    "Remove a security rule from the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge security-rules organizations-servers-sites-security-rules-destroy --organization <value> --server 738376 --site 802332 --security-rule 720957",
+		Example: "  forge security-rules organizations-servers-sites-security-rules-destroy --organization <value> --server-param 738376 --site 802332 --security-rule 720957",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesSecurityRulesDestroyCmd,
 		Aliases: []string{"osssrd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.security-rules.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesSecurityRulesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesSecurityRulesDestroyRequest](organizationsServersSitesSecurityRulesDestroyCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesSecurityRulesDestroyCmd(cmd *cobra.Command, arg
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesSecurityRulesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesSecurityRulesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesSecurityRulesDestroyRequest](cmd, organizationsServersSitesSecurityRulesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

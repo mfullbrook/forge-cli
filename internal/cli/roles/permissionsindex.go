@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initPermissionsIndexCmd(parent *cobra.Command) error {
 		Short:   "List permissions",
 		Long:    "Show all permissions.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge roles permissions-index",
+		Args:    cobra.NoArgs,
 		RunE:    runPermissionsIndexCmd,
 		Aliases: []string{"pi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "permissions.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, permissionsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.PermissionsIndexRequest](permissionsIndexCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runPermissionsIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, permissionsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, permissionsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.PermissionsIndexRequest](cmd, permissionsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

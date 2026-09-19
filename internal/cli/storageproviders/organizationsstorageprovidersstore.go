@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -34,14 +33,25 @@ func initOrganizationsStorageProvidersStoreCmd(parent *cobra.Command) error {
 		Short:   "Create storage provider",
 		Long:    "Create a new storage provider for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge storage-providers organizations-storage-providers-store --organization <value> --name <value> --provider ovh",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsStorageProvidersStoreCmd,
 		Aliases: []string{"ospst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.storage-providers.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsStorageProvidersStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsStorageProvidersStoreRequest](organizationsStorageProvidersStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-storage-providers-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsStorageProvidersStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-storage-providers-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -51,16 +61,14 @@ func runOrganizationsStorageProvidersStoreCmd(cmd *cobra.Command, args []string)
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsStorageProvidersStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsStorageProvidersStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.storage-providers.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsStorageProvidersStoreRequest](cmd, organizationsStorageProvidersStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

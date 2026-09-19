@@ -41,7 +41,14 @@ func CreateDomainModeCreateSiteDomainMode(createSiteDomainMode CreateSiteDomainM
 	}
 }
 
-func (u *DomainMode) UnmarshalJSON(data []byte) error {
+func (u *DomainMode) UnmarshalJSON(data []byte) (err error) {
+	previous := *u
+	*u = DomainMode{}
+	defer func() {
+		if err != nil {
+			*u = previous
+		}
+	}()
 
 	var candidates []utils.UnionCandidate
 

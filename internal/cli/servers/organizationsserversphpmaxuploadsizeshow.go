@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpMaxUploadSizeShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersPhpMaxUploadSizeShowCmd initializes the organizations-servers-php-max-upload-size-show command.
@@ -25,9 +24,13 @@ func initOrganizationsServersPhpMaxUploadSizeShowCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-php-max-upload-size-show",
 		Short:   "Get server PHP max upload size",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-php-max-upload-size-show --organization <value> --server 308299",
+		Example: "  forge servers organizations-servers-php-max-upload-size-show --organization <value> --server-param 308299",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpMaxUploadSizeShowCmd,
 		Aliases: []string{"ospmuss"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.max-upload-size.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpMaxUploadSizeShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpMaxUploadSizeShowRequest](organizationsServersPhpMaxUploadSizeShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersPhpMaxUploadSizeShowCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpMaxUploadSizeShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpMaxUploadSizeShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpMaxUploadSizeShowRequest](cmd, organizationsServersPhpMaxUploadSizeShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}
