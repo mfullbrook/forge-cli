@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsLaravelSchedulerShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsLaravelSchedulerShowCmd(parent *co
 		Use:     "organizations-servers-sites-integrations-laravel-scheduler-show",
 		Short:   "Get Laravel Scheduler integration job",
 		Long:    "Show whether Laravel Scheduler integration is enabled.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-laravel-scheduler-show --organization <value> --server 402397 --site 685859",
+		Example: "  forge integrations organizations-servers-sites-integrations-laravel-scheduler-show --organization <value> --server-param 402397 --site 685859",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsLaravelSchedulerShowCmd,
 		Aliases: []string{"ossilss"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.laravel-scheduler.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsLaravelSchedulerShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsLaravelSchedulerShowRequest](organizationsServersSitesIntegrationsLaravelSchedulerShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsLaravelSchedulerShowCmd(cmd *cobra.
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsLaravelSchedulerShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsLaravelSchedulerShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsLaravelSchedulerShowRequest](cmd, organizationsServersSitesIntegrationsLaravelSchedulerShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

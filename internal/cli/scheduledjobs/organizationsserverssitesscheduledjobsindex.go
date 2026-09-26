@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesScheduledJobsIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `created_at`, `updated_at`, `status`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-created_at`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
@@ -31,9 +30,13 @@ func initOrganizationsServersSitesScheduledJobsIndexCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-sites-scheduled-jobs-index",
 		Short:   "List site scheduled jobs",
 		Long:    "List all scheduled jobs associated with the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge scheduled-jobs organizations-servers-sites-scheduled-jobs-index --organization <value> --server 374166 --site 637674",
+		Example: "  forge scheduled-jobs organizations-servers-sites-scheduled-jobs-index --organization <value> --server-param 374166 --site 637674",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesScheduledJobsIndexCmd,
 		Aliases: []string{"osssji"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.scheduled-jobs.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesScheduledJobsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesScheduledJobsIndexRequest](organizationsServersSitesScheduledJobsIndexCmdMeta); err != nil {
@@ -48,16 +51,11 @@ func runOrganizationsServersSitesScheduledJobsIndexCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesScheduledJobsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesScheduledJobsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesScheduledJobsIndexRequest](cmd, organizationsServersSitesScheduledJobsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

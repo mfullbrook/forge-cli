@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersBackgroundProcessesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `user`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-user`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
@@ -31,9 +30,13 @@ func initOrganizationsServersBackgroundProcessesIndexCmd(parent *cobra.Command) 
 		Use:     "organizations-servers-background-processes-index",
 		Short:   "List background processes",
 		Long:    "List all background processes on the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge background-processes organizations-servers-background-processes-index --organization <value> --server 170230",
+		Example: "  forge background-processes organizations-servers-background-processes-index --organization <value> --server-param 170230",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersBackgroundProcessesIndexCmd,
 		Aliases: []string{"osbpi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.background-processes.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersBackgroundProcessesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersBackgroundProcessesIndexRequest](organizationsServersBackgroundProcessesIndexCmdMeta); err != nil {
@@ -48,16 +51,11 @@ func runOrganizationsServersBackgroundProcessesIndexCmd(cmd *cobra.Command, args
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersBackgroundProcessesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersBackgroundProcessesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersBackgroundProcessesIndexRequest](cmd, organizationsServersBackgroundProcessesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

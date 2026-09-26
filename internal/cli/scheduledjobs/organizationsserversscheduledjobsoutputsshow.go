@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersScheduledJobsOutputsShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "job", Shorthand: "j", FieldPath: "Job", Kind: flagutil.FlagKindInt64, Required: true, Description: "The job ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersScheduledJobsOutputsShowCmd(parent *cobra.Command) 
 		Use:     "organizations-servers-scheduled-jobs-outputs-show",
 		Short:   "Get scheduled job output",
 		Long:    "Show a specific scheduled job output.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge scheduled-jobs organizations-servers-scheduled-jobs-outputs-show --organization <value> --server 544730 --job 516120",
+		Example: "  forge scheduled-jobs organizations-servers-scheduled-jobs-outputs-show --organization <value> --server-param 544730 --job 516120",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersScheduledJobsOutputsShowCmd,
 		Aliases: []string{"ossjos"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.scheduled-jobs.outputs.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersScheduledJobsOutputsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersScheduledJobsOutputsShowRequest](organizationsServersScheduledJobsOutputsShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersScheduledJobsOutputsShowCmd(cmd *cobra.Command, args
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersScheduledJobsOutputsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersScheduledJobsOutputsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersScheduledJobsOutputsShowRequest](cmd, organizationsServersScheduledJobsOutputsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

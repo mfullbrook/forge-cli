@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesDomainsDestroyCmd(parent *cobra.Command) error
 		Use:     "organizations-servers-sites-domains-destroy",
 		Short:   "Delete domain",
 		Long:    "Remove a domain from the site\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-destroy --organization <value> --server 914577 --site 692892 --domain-record 957439",
+		Example: "  forge sites organizations-servers-sites-domains-destroy --organization <value> --server-param 914577 --site 692892 --domain-record 957439",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsDestroyCmd,
 		Aliases: []string{"ossdd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsDestroyRequest](organizationsServersSitesDomainsDestroyCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesDomainsDestroyCmd(cmd *cobra.Command, args []st
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsDestroyRequest](cmd, organizationsServersSitesDomainsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsLaravelMaintenanceShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsLaravelMaintenanceShowCmd(parent *
 		Use:     "organizations-servers-sites-integrations-laravel-maintenance-show",
 		Short:   "Get Laravel Maintenance integration status",
 		Long:    "Show whether Laravel Maintenance integration is enabled.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-laravel-maintenance-show --organization <value> --server 788102 --site 95787",
+		Example: "  forge integrations organizations-servers-sites-integrations-laravel-maintenance-show --organization <value> --server-param 788102 --site 95787",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsLaravelMaintenanceShowCmd,
 		Aliases: []string{"ossilms"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.laravel-maintenance.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsLaravelMaintenanceShowRequest](organizationsServersSitesIntegrationsLaravelMaintenanceShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsLaravelMaintenanceShowCmd(cmd *cobr
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsLaravelMaintenanceShowRequest](cmd, organizationsServersSitesIntegrationsLaravelMaintenanceShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

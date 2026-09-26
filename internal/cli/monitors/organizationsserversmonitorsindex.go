@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersMonitorsIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `state`, `status`, `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-state`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
@@ -32,9 +31,13 @@ func initOrganizationsServersMonitorsIndexCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-monitors-index",
 		Short:   "List server monitors",
 		Long:    "List all monitors associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge monitors organizations-servers-monitors-index --organization <value> --server 433479",
+		Example: "  forge monitors organizations-servers-monitors-index --organization <value> --server-param 433479",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersMonitorsIndexCmd,
 		Aliases: []string{"osmi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.monitors.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersMonitorsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersMonitorsIndexRequest](organizationsServersMonitorsIndexCmdMeta); err != nil {
@@ -49,16 +52,11 @@ func runOrganizationsServersMonitorsIndexCmd(cmd *cobra.Command, args []string) 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersMonitorsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersMonitorsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersMonitorsIndexRequest](cmd, organizationsServersMonitorsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

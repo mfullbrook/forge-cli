@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesNpmCredentialsDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "registry", Shorthand: "r", FieldPath: "Registry", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesNpmCredentialsDestroyCmd(parent *cobra.Command
 		Use:     "organizations-servers-sites-npm-credentials-destroy",
 		Short:   "Delete npm credentials for the site",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-npm-credentials-destroy --organization <value> --server 178099 --site 993712 --registry <value>",
+		Example: "  forge sites organizations-servers-sites-npm-credentials-destroy --organization <value> --server-param 178099 --site 993712 --registry <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesNpmCredentialsDestroyCmd,
 		Aliases: []string{"ossncd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.npm.credentials.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesNpmCredentialsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesNpmCredentialsDestroyRequest](organizationsServersSitesNpmCredentialsDestroyCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesNpmCredentialsDestroyCmd(cmd *cobra.Command, ar
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesNpmCredentialsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesNpmCredentialsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesNpmCredentialsDestroyRequest](cmd, organizationsServersSitesNpmCredentialsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

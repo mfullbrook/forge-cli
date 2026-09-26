@@ -9,9 +9,11 @@ import (
 
 func InitNginxRoot(parent *cobra.Command) error {
 	var NginxCmd = &cobra.Command{
-		Use:   "nginx",
-		Short: "Operations for nginx",
-		Long:  "Operations for nginx",
+		Use:         "nginx",
+		Short:       "Operations for nginx",
+		Long:        "Operations for nginx",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

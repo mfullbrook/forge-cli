@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsNginxUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 	{FlagName: "config-param", Shorthand: "c", FieldPath: "Body.Config", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
@@ -28,15 +27,26 @@ func initOrganizationsServersSitesDomainsNginxUpdateCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-sites-domains-nginx-update",
 		Short:   "Update domain Nginx configuration",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-nginx-update --organization <value> --server 671030 --site 267210 --domain-record 207404 --config-param <value>",
+		Example: "  forge sites organizations-servers-sites-domains-nginx-update --organization <value> --server-param 671030 --site 267210 --domain-record 207404 --config-param <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsNginxUpdateCmd,
 		Aliases: []string{"ossdnu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.nginx.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsNginxUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsNginxUpdateRequest](organizationsServersSitesDomainsNginxUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-domains-nginx-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesDomainsNginxUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-domains-nginx-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -46,16 +56,14 @@ func runOrganizationsServersSitesDomainsNginxUpdateCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsNginxUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsNginxUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.domains.nginx.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsNginxUpdateRequest](cmd, organizationsServersSitesDomainsNginxUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

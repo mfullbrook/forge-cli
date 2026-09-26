@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesHealthcheckShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesHealthcheckShowCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-sites-healthcheck-show",
 		Short:   "Get healthcheck endpoint",
 		Long:    "Show the healthcheck endpoint that has been set for the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-healthcheck-show --organization <value> --server 124580 --site 727844",
+		Example: "  forge sites organizations-servers-sites-healthcheck-show --organization <value> --server-param 124580 --site 727844",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesHealthcheckShowCmd,
 		Aliases: []string{"osshs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.healthcheck.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesHealthcheckShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesHealthcheckShowRequest](organizationsServersSitesHealthcheckShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesHealthcheckShowCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesHealthcheckShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesHealthcheckShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesHealthcheckShowRequest](cmd, organizationsServersSitesHealthcheckShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

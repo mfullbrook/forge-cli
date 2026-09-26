@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersMonitorsShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "monitor", Shorthand: "m", FieldPath: "Monitor", Kind: flagutil.FlagKindInt64, Required: true, Description: "The monitor ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersMonitorsShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-monitors-show",
 		Short:   "Get server monitor",
 		Long:    "Get a specific monitor associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge monitors organizations-servers-monitors-show --organization <value> --server 465626 --monitor 449178",
+		Example: "  forge monitors organizations-servers-monitors-show --organization <value> --server-param 465626 --monitor 449178",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersMonitorsShowCmd,
 		Aliases: []string{"osms"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.monitors.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersMonitorsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersMonitorsShowRequest](organizationsServersMonitorsShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersMonitorsShowCmd(cmd *cobra.Command, args []string) e
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersMonitorsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersMonitorsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersMonitorsShowRequest](cmd, organizationsServersMonitorsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

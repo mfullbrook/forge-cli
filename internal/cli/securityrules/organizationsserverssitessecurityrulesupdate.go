@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesSecurityRulesUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "security-rule", FieldPath: "SecurityRule", Kind: flagutil.FlagKindInt64, Required: true, Description: "The security rule ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Required: true, Description: "The name of the security rule. [required]"},
@@ -30,15 +29,26 @@ func initOrganizationsServersSitesSecurityRulesUpdateCmd(parent *cobra.Command) 
 		Use:     "organizations-servers-sites-security-rules-update",
 		Short:   "Update site security rule",
 		Long:    "Update an existing security rule for a site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge security-rules organizations-servers-sites-security-rules-update --organization <value> --server 670665 --site 934399 --security-rule 830016 --name Restricted Access",
+		Example: "  forge security-rules organizations-servers-sites-security-rules-update --organization <value> --server-param 670665 --site 934399 --security-rule 830016 --name 'Restricted Access'",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesSecurityRulesUpdateCmd,
 		Aliases: []string{"osssru"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.security-rules.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesSecurityRulesUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesSecurityRulesUpdateRequest](organizationsServersSitesSecurityRulesUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-security-rules-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesSecurityRulesUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-security-rules-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -48,16 +58,14 @@ func runOrganizationsServersSitesSecurityRulesUpdateCmd(cmd *cobra.Command, args
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesSecurityRulesUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesSecurityRulesUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.security-rules.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesSecurityRulesUpdateRequest](cmd, organizationsServersSitesSecurityRulesUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

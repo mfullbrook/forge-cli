@@ -106,6 +106,7 @@ func (u Output) IsUnknown() bool {
 }
 
 func (u *Output) UnmarshalJSON(data []byte) error {
+	*u = Output{}
 
 	var candidates []utils.UnionCandidate
 

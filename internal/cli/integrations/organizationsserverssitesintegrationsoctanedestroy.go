@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsOctaneDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsOctaneDestroyCmd(parent *cobra.Com
 		Use:     "organizations-servers-sites-integrations-octane-destroy",
 		Short:   "Delete Laravel Octane integration",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-octane-destroy --organization <value> --server 705913 --site 396063",
+		Example: "  forge integrations organizations-servers-sites-integrations-octane-destroy --organization <value> --server-param 705913 --site 396063",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsOctaneDestroyCmd,
 		Aliases: []string{"ossiod"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.octane.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsOctaneDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsOctaneDestroyRequest](organizationsServersSitesIntegrationsOctaneDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsOctaneDestroyCmd(cmd *cobra.Command
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsOctaneDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsOctaneDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsOctaneDestroyRequest](cmd, organizationsServersSitesIntegrationsOctaneDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

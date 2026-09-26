@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseUsersDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "database-user", FieldPath: "DatabaseUser", Kind: flagutil.FlagKindInt64, Required: true, Description: "The database user ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersDatabaseUsersDestroyCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-database-users-destroy",
 		Short:   "Delete database user",
 		Long:    "Remove a database user from the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge databases organizations-servers-database-users-destroy --organization <value> --server 78440 --database-user 964828",
+		Example: "  forge databases organizations-servers-database-users-destroy --organization <value> --server-param 78440 --database-user 964828",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseUsersDestroyCmd,
 		Aliases: []string{"osdud"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.users.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseUsersDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseUsersDestroyRequest](organizationsServersDatabaseUsersDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersDatabaseUsersDestroyCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseUsersDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseUsersDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseUsersDestroyRequest](cmd, organizationsServersDatabaseUsersDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

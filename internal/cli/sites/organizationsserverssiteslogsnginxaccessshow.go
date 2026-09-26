@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesLogsNginxAccessShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesLogsNginxAccessShowCmd(parent *cobra.Command) 
 		Use:     "organizations-servers-sites-logs-nginx-access-show",
 		Short:   "Get Nginx access log content",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-logs-nginx-access-show --organization <value> --server 527182 --site 383519",
+		Example: "  forge sites organizations-servers-sites-logs-nginx-access-show --organization <value> --server-param 527182 --site 383519",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesLogsNginxAccessShowCmd,
 		Aliases: []string{"osslnas"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.logs.nginx-access.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesLogsNginxAccessShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesLogsNginxAccessShowRequest](organizationsServersSitesLogsNginxAccessShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesLogsNginxAccessShowCmd(cmd *cobra.Command, args
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesLogsNginxAccessShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesLogsNginxAccessShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesLogsNginxAccessShowRequest](cmd, organizationsServersSitesLogsNginxAccessShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

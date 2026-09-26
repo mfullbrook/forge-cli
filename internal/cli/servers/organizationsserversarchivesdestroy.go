@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersArchivesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersArchivesDestroyCmd initializes the organizations-servers-archives-destroy command.
@@ -25,9 +24,13 @@ func initOrganizationsServersArchivesDestroyCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-archives-destroy",
 		Short:   "Delete archived server",
 		Long:    "Unarchive a server.\nMake sure you have regenerated the server key and added it to the server before unarchiving.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-archives-destroy --organization <value> --server 452497",
+		Example: "  forge servers organizations-servers-archives-destroy --organization <value> --server-param 452497",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersArchivesDestroyCmd,
 		Aliases: []string{"osad"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.archives.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersArchivesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersArchivesDestroyRequest](organizationsServersArchivesDestroyCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersArchivesDestroyCmd(cmd *cobra.Command, args []string
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersArchivesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersArchivesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersArchivesDestroyRequest](cmd, organizationsServersArchivesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

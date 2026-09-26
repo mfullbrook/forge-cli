@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -28,8 +27,12 @@ func initOrganizationsTeamsServerCredentialsIndexCmd(parent *cobra.Command) erro
 		Short:   "List team server credentials",
 		Long:    "Show all server credentials for the team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge server-credentials organizations-teams-server-credentials-index --organization <value> --team 460913",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsServerCredentialsIndexCmd,
 		Aliases: []string{"otsci"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.server-credentials.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsServerCredentialsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsServerCredentialsIndexRequest](organizationsTeamsServerCredentialsIndexCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsTeamsServerCredentialsIndexCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsServerCredentialsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsServerCredentialsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsServerCredentialsIndexRequest](cmd, organizationsTeamsServerCredentialsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

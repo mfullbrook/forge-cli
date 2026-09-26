@@ -9,9 +9,11 @@ import (
 
 func InitBackgroundProcessesRoot(parent *cobra.Command) error {
 	var BackgroundProcessesCmd = &cobra.Command{
-		Use:   "background-processes",
-		Short: "Operations for background-processes",
-		Long:  "Operations for background-processes",
+		Use:         "background-processes",
+		Short:       "Operations for background-processes",
+		Long:        "Operations for background-processes",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

@@ -21,16 +21,28 @@ var predefinedRolesShowCmdMeta = []flagutil.FlagMeta{
 // initPredefinedRolesShowCmd initializes the predefined-roles-show command.
 func initPredefinedRolesShowCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "predefined-roles-show",
+		Use:     "predefined-roles-show [role]",
 		Short:   "Get predefined role",
 		Long:    "Show a specific predefined role.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge roles predefined-roles-show --role 727042",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runPredefinedRolesShowCmd,
 		Aliases: []string{"prs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "predefined-roles.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, predefinedRolesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.PredefinedRolesShowRequest](predefinedRolesShowCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for predefined-roles-show: %w", err)
+	}
+	if err := flagutil.DeclarePositionalFlag(cmd, "role", "The role ID (or pass it as the [role] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "role", Summary: "The role ID", Required: true, SatisfiedBy: []string{"role"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for predefined-roles-show: %w", err)
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -41,16 +53,14 @@ func runPredefinedRolesShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, predefinedRolesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, predefinedRolesShowCmdMeta); err != nil {
-			return err
-		}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.PredefinedRolesShowRequest](cmd, predefinedRolesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -9,9 +9,11 @@ import (
 
 func InitRedirectRulesRoot(parent *cobra.Command) error {
 	var RedirectRulesCmd = &cobra.Command{
-		Use:   "redirect-rules",
-		Short: "Operations for redirect-rules",
-		Long:  "Operations for redirect-rules",
+		Use:         "redirect-rules",
+		Short:       "Operations for redirect-rules",
+		Long:        "Operations for redirect-rules",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

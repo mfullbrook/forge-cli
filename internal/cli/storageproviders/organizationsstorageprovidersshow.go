@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initOrganizationsStorageProvidersShowCmd(parent *cobra.Command) error {
 		Short:   "Get storage provider",
 		Long:    "Show a specific storage provider for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge storage-providers organizations-storage-providers-show --organization <value> --storage-configuration 721812",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsStorageProvidersShowCmd,
 		Aliases: []string{"osps"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.storage-providers.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsStorageProvidersShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsStorageProvidersShowRequest](organizationsStorageProvidersShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsStorageProvidersShowCmd(cmd *cobra.Command, args []string) 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsStorageProvidersShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsStorageProvidersShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsStorageProvidersShowRequest](cmd, organizationsStorageProvidersShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

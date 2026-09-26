@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsNginxShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesDomainsNginxShowCmd(parent *cobra.Command) err
 		Use:     "organizations-servers-sites-domains-nginx-show",
 		Short:   "Get domain Nginx configuration",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-nginx-show --organization <value> --server 209730 --site 935614 --domain-record 759547",
+		Example: "  forge sites organizations-servers-sites-domains-nginx-show --organization <value> --server-param 209730 --site 935614 --domain-record 759547",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsNginxShowCmd,
 		Aliases: []string{"ossdns"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.nginx.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsNginxShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsNginxShowRequest](organizationsServersSitesDomainsNginxShowCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesDomainsNginxShowCmd(cmd *cobra.Command, args []
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsNginxShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsNginxShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsNginxShowRequest](cmd, organizationsServersSitesDomainsNginxShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

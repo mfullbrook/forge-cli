@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsStorageProvidersUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "storage-configuration", FieldPath: "StorageConfiguration", Kind: flagutil.FlagKindInt64, Required: true, Description: "The storage configuration ID [required]"},
+	{FlagName: "storage-configuration", Shorthand: "s", FieldPath: "StorageConfiguration", Kind: flagutil.FlagKindInt64, Required: true, Description: "The storage configuration ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
 	{FlagName: "provider", Shorthand: "p", FieldPath: "Body.Provider", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"s3", "spaces", "hetzner", "ovh", "scaleway", "custom"}, Description: "options: s3, spaces, hetzner, ovh, scaleway, custom [required]"},
 	{FlagName: "region", Shorthand: "r", FieldPath: "Body.Region", Kind: flagutil.FlagKindString, Optional: true, Description: "string value"},
@@ -36,14 +35,25 @@ func initOrganizationsStorageProvidersUpdateCmd(parent *cobra.Command) error {
 		Short:   "Update storage provider",
 		Long:    "Update a storage provider for the organization.\n\nProcessing mode: <small><code>async</code></small>",
 		Example: "  forge storage-providers organizations-storage-providers-update --organization <value> --storage-configuration 698133 --name <value> --provider s3",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsStorageProvidersUpdateCmd,
 		Aliases: []string{"ospu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.storage-providers.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsStorageProvidersUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsStorageProvidersUpdateRequest](organizationsStorageProvidersUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-storage-providers-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsStorageProvidersUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-storage-providers-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -53,16 +63,14 @@ func runOrganizationsStorageProvidersUpdateCmd(cmd *cobra.Command, args []string
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsStorageProvidersUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsStorageProvidersUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.storage-providers.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsStorageProvidersUpdateRequest](cmd, organizationsStorageProvidersUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

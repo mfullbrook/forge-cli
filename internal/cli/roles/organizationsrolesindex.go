@@ -26,16 +26,28 @@ var organizationsRolesIndexCmdMeta = []flagutil.FlagMeta{
 // initOrganizationsRolesIndexCmd initializes the organizations-roles-index command.
 func initOrganizationsRolesIndexCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "organizations-roles-index",
+		Use:     "organizations-roles-index [organization]",
 		Short:   "List roles",
 		Long:    "Show all roles for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge roles organizations-roles-index --organization <value>",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runOrganizationsRolesIndexCmd,
 		Aliases: []string{"ori"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.roles.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsRolesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsRolesIndexRequest](organizationsRolesIndexCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-roles-index: %w", err)
+	}
+	if err := flagutil.DeclarePositionalFlag(cmd, "organization", "The organization slug (or pass it as the [organization] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "organization", Summary: "The organization slug", Required: true, SatisfiedBy: []string{"organization"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for organizations-roles-index: %w", err)
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -46,16 +58,14 @@ func runOrganizationsRolesIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsRolesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsRolesIndexCmdMeta); err != nil {
-			return err
-		}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsRolesIndexRequest](cmd, organizationsRolesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}
