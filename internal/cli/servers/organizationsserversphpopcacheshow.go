@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpOpcacheShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersPhpOpcacheShowCmd initializes the organizations-servers-php-opcache-show command.
@@ -25,9 +24,13 @@ func initOrganizationsServersPhpOpcacheShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-php-opcache-show",
 		Short:   "Get server PHP OPcache status",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-php-opcache-show --organization <value> --server 888961",
+		Example: "  forge servers organizations-servers-php-opcache-show --organization <value> --server-param 888961",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpOpcacheShowCmd,
 		Aliases: []string{"ospos"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.opcache.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpOpcacheShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpOpcacheShowRequest](organizationsServersPhpOpcacheShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersPhpOpcacheShowCmd(cmd *cobra.Command, args []string)
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpOpcacheShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpOpcacheShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpOpcacheShowRequest](cmd, organizationsServersPhpOpcacheShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initForgeRecipesIndexCmd(parent *cobra.Command) error {
 		Short:   "List Forge's recipes",
 		Long:    "Show all Forge provided recipes.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge recipes forge-recipes-index",
+		Args:    cobra.NoArgs,
 		RunE:    runForgeRecipesIndexCmd,
 		Aliases: []string{"fri"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "forge-recipes.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, forgeRecipesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.ForgeRecipesIndexRequest](forgeRecipesIndexCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runForgeRecipesIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, forgeRecipesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, forgeRecipesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.ForgeRecipesIndexRequest](cmd, forgeRecipesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

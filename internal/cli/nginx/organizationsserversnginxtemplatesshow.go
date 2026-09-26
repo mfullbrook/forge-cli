@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersNginxTemplatesShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "nginx-template", Shorthand: "n", FieldPath: "NginxTemplate", Kind: flagutil.FlagKindInt64, Required: true, Description: "The nginx template ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersNginxTemplatesShowCmd(parent *cobra.Command) error 
 		Use:     "organizations-servers-nginx-templates-show",
 		Short:   "Get Nginx template",
 		Long:    "Get a specific nginx template associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge nginx organizations-servers-nginx-templates-show --organization <value> --server 466497 --nginx-template 856863",
+		Example: "  forge nginx organizations-servers-nginx-templates-show --organization <value> --server-param 466497 --nginx-template 856863",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersNginxTemplatesShowCmd,
 		Aliases: []string{"osnts"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.nginx.templates.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersNginxTemplatesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersNginxTemplatesShowRequest](organizationsServersNginxTemplatesShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersNginxTemplatesShowCmd(cmd *cobra.Command, args []str
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersNginxTemplatesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersNginxTemplatesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersNginxTemplatesShowRequest](cmd, organizationsServersNginxTemplatesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

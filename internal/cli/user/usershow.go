@@ -18,7 +18,11 @@ func initUserShowCmd(parent *cobra.Command) error {
 		Short:   "Get user",
 		Long:    "Show the authenticated user.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge user show",
+		Args:    cobra.NoArgs,
 		RunE:    runUserShowCmd,
+		Annotations: map[string]string{
+			"speakeasy_operation": "user.show",
+		},
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -29,7 +33,7 @@ func runUserShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

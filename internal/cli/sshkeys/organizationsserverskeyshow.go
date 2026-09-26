@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersKeyShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersKeyShowCmd initializes the organizations-servers-key-show command.
@@ -25,9 +24,13 @@ func initOrganizationsServersKeyShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-key-show",
 		Short:   "Get server public SSH key",
 		Long:    "Get the public SSH key for the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge SSH-keys organizations-servers-key-show --organization <value> --server 784249",
+		Example: "  forge SSH-keys organizations-servers-key-show --organization <value> --server-param 784249",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersKeyShowCmd,
 		Aliases: []string{"osks"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.key.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersKeyShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersKeyShowRequest](organizationsServersKeyShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersKeyShowCmd(cmd *cobra.Command, args []string) error 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersKeyShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersKeyShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersKeyShowRequest](cmd, organizationsServersKeyShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

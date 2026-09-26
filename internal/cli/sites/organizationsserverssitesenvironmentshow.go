@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesEnvironmentShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesEnvironmentShowCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-sites-environment-show",
 		Short:   "Get .env content",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-environment-show --organization <value> --server 170635 --site 127518",
+		Example: "  forge sites organizations-servers-sites-environment-show --organization <value> --server-param 170635 --site 127518",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesEnvironmentShowCmd,
 		Aliases: []string{"osses"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.environment.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesEnvironmentShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesEnvironmentShowRequest](organizationsServersSitesEnvironmentShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesEnvironmentShowCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesEnvironmentShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesEnvironmentShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesEnvironmentShowRequest](cmd, organizationsServersSitesEnvironmentShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

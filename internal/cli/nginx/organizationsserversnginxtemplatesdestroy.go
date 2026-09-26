@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersNginxTemplatesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "nginx-template", Shorthand: "n", FieldPath: "NginxTemplate", Kind: flagutil.FlagKindInt64, Required: true, Description: "The nginx template ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersNginxTemplatesDestroyCmd(parent *cobra.Command) err
 		Use:     "organizations-servers-nginx-templates-destroy",
 		Short:   "Delete Nginx template",
 		Long:    "Delete the specified nginx template from the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge nginx organizations-servers-nginx-templates-destroy --organization <value> --server 251022 --nginx-template 63212",
+		Example: "  forge nginx organizations-servers-nginx-templates-destroy --organization <value> --server-param 251022 --nginx-template 63212",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersNginxTemplatesDestroyCmd,
 		Aliases: []string{"osntd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.nginx.templates.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersNginxTemplatesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersNginxTemplatesDestroyRequest](organizationsServersNginxTemplatesDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersNginxTemplatesDestroyCmd(cmd *cobra.Command, args []
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersNginxTemplatesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersNginxTemplatesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersNginxTemplatesDestroyRequest](cmd, organizationsServersNginxTemplatesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

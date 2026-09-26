@@ -21,16 +21,28 @@ var forgeRecipesShowCmdMeta = []flagutil.FlagMeta{
 // initForgeRecipesShowCmd initializes the forge-recipes-show command.
 func initForgeRecipesShowCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "forge-recipes-show",
+		Use:     "forge-recipes-show [forge-recipe]",
 		Short:   "Get Forge recipe",
 		Long:    "Show the Forge recipe.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge recipes forge-recipes-show --forge-recipe 420324",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runForgeRecipesShowCmd,
 		Aliases: []string{"frs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "forge-recipes.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, forgeRecipesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.ForgeRecipesShowRequest](forgeRecipesShowCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for forge-recipes-show: %w", err)
+	}
+	if err := flagutil.DeclarePositionalFlag(cmd, "forge-recipe", "The forge recipe ID (or pass it as the [forge-recipe] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "forge-recipe", Summary: "The forge recipe ID", Required: true, SatisfiedBy: []string{"forge-recipe"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for forge-recipes-show: %w", err)
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -41,16 +53,14 @@ func runForgeRecipesShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, forgeRecipesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, forgeRecipesShowCmdMeta); err != nil {
-			return err
-		}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.ForgeRecipesShowRequest](cmd, forgeRecipesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseUsersShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "database-user", FieldPath: "DatabaseUser", Kind: flagutil.FlagKindInt64, Required: true, Description: "The database user ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersDatabaseUsersShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-database-users-show",
 		Short:   "Get database user",
 		Long:    "Get a specific database user associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge databases organizations-servers-database-users-show --organization <value> --server 501442 --database-user 400928",
+		Example: "  forge databases organizations-servers-database-users-show --organization <value> --server-param 501442 --database-user 400928",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseUsersShowCmd,
 		Aliases: []string{"osdus"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.users.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseUsersShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseUsersShowRequest](organizationsServersDatabaseUsersShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersDatabaseUsersShowCmd(cmd *cobra.Command, args []stri
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseUsersShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseUsersShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseUsersShowRequest](cmd, organizationsServersDatabaseUsersShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

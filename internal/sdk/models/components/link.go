@@ -58,6 +58,7 @@ func (u Hreflang) IsUnknown() bool {
 }
 
 func (u *Hreflang) UnmarshalJSON(data []byte) error {
+	*u = Hreflang{}
 
 	var candidates []utils.UnionCandidate
 

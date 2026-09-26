@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseBackupsShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "backup-configuration", Shorthand: "b", FieldPath: "BackupConfiguration", Kind: flagutil.FlagKindInt64, Required: true, Description: "The backup configuration ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersDatabaseBackupsShowCmd(parent *cobra.Command) error
 		Use:     "organizations-servers-database-backups-show",
 		Short:   "Get backup configuration",
 		Long:    "Get a specific backup configuration for the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge backups organizations-servers-database-backups-show --organization <value> --server 27163 --backup-configuration 811576",
+		Example: "  forge backups organizations-servers-database-backups-show --organization <value> --server-param 27163 --backup-configuration 811576",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseBackupsShowCmd,
 		Aliases: []string{"osdbs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.backups.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseBackupsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseBackupsShowRequest](organizationsServersDatabaseBackupsShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersDatabaseBackupsShowCmd(cmd *cobra.Command, args []st
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseBackupsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseBackupsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseBackupsShowRequest](cmd, organizationsServersDatabaseBackupsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}
