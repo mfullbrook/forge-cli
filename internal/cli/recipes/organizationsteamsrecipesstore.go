@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,14 +26,25 @@ func initOrganizationsTeamsRecipesStoreCmd(parent *cobra.Command) error {
 		Short:   "Share recipe with the team",
 		Long:    "Shares a recipe with a team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge recipes organizations-teams-recipes-store --organization <value> --team 776672 --recipe-id 3",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsRecipesStoreCmd,
 		Aliases: []string{"otrs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.recipes.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsRecipesStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsRecipesStoreRequest](organizationsTeamsRecipesStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-teams-recipes-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsTeamsRecipesStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-teams-recipes-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -44,16 +54,14 @@ func runOrganizationsTeamsRecipesStoreCmd(cmd *cobra.Command, args []string) err
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsRecipesStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsRecipesStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.teams.recipes.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsRecipesStoreRequest](cmd, organizationsTeamsRecipesStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

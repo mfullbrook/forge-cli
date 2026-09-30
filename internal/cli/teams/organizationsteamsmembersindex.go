@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -28,8 +27,12 @@ func initOrganizationsTeamsMembersIndexCmd(parent *cobra.Command) error {
 		Short:   "List team members",
 		Long:    "Show all members for the team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge teams organizations-teams-members-index --organization <value> --team 313066",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsMembersIndexCmd,
 		Aliases: []string{"otmi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.members.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsMembersIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsMembersIndexRequest](organizationsTeamsMembersIndexCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsTeamsMembersIndexCmd(cmd *cobra.Command, args []string) err
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsMembersIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsMembersIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsMembersIndexRequest](cmd, organizationsTeamsMembersIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

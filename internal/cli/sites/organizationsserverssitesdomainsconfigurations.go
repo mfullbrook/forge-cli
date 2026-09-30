@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsConfigurationsCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesDomainsConfigurationsCmd(parent *cobra.Command
 		Use:     "organizations-servers-sites-domains-configurations",
 		Short:   "Get domain DNS configuration",
 		Long:    "Show the DNS configuration instructions for a domain.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-configurations --organization <value> --server 342646 --site 980499 --domain-record 665098",
+		Example: "  forge sites organizations-servers-sites-domains-configurations --organization <value> --server-param 342646 --site 980499 --domain-record 665098",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsConfigurationsCmd,
 		Aliases: []string{"ossdc"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.configurations",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsConfigurationsCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsConfigurationsRequest](organizationsServersSitesDomainsConfigurationsCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesDomainsConfigurationsCmd(cmd *cobra.Command, ar
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsConfigurationsCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsConfigurationsCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsConfigurationsRequest](cmd, organizationsServersSitesDomainsConfigurationsCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

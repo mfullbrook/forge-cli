@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesNpmCredentialsShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "registry", Shorthand: "r", FieldPath: "Registry", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesNpmCredentialsShowCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-sites-npm-credentials-show",
 		Short:   "Get NPM credential for the site",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-npm-credentials-show --organization <value> --server 617338 --site 549162 --registry <value>",
+		Example: "  forge sites organizations-servers-sites-npm-credentials-show --organization <value> --server-param 617338 --site 549162 --registry <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesNpmCredentialsShowCmd,
 		Aliases: []string{"ossncs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.npm.credentials.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesNpmCredentialsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesNpmCredentialsShowRequest](organizationsServersSitesNpmCredentialsShowCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesNpmCredentialsShowCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesNpmCredentialsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesNpmCredentialsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesNpmCredentialsShowRequest](cmd, organizationsServersSitesNpmCredentialsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsCertificatesShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 	{FlagName: "certificate", Shorthand: "c", FieldPath: "Certificate", Kind: flagutil.FlagKindInt64, Required: true, Description: "The certificate ID [required]"},
@@ -28,9 +27,13 @@ func initOrganizationsServersSitesDomainsCertificatesShowCmd(parent *cobra.Comma
 		Use:     "organizations-servers-sites-domains-certificates-show",
 		Short:   "Get domain certificate",
 		Long:    "Get a specific certificate for a given domain.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-certificates-show --organization <value> --server 438989 --site 142259 --domain-record 898857 --certificate 788190",
+		Example: "  forge sites organizations-servers-sites-domains-certificates-show --organization <value> --server-param 438989 --site 142259 --domain-record 898857 --certificate 788190",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsCertificatesShowCmd,
 		Aliases: []string{"ossdcsh"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.certificates.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsCertificatesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsCertificatesShowRequest](organizationsServersSitesDomainsCertificatesShowCmdMeta); err != nil {
@@ -45,16 +48,11 @@ func runOrganizationsServersSitesDomainsCertificatesShowCmd(cmd *cobra.Command, 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsCertificatesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsCertificatesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsCertificatesShowRequest](cmd, organizationsServersSitesDomainsCertificatesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

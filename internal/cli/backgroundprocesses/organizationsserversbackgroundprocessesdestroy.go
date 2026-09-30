@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersBackgroundProcessesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "background-process", Shorthand: "b", FieldPath: "BackgroundProcess", Kind: flagutil.FlagKindInt64, Required: true, Description: "The background process ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersBackgroundProcessesDestroyCmd(parent *cobra.Command
 		Use:     "organizations-servers-background-processes-destroy",
 		Short:   "Delete background process",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge background-processes organizations-servers-background-processes-destroy --organization <value> --server 575371 --background-process 800465",
+		Example: "  forge background-processes organizations-servers-background-processes-destroy --organization <value> --server-param 575371 --background-process 800465",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersBackgroundProcessesDestroyCmd,
 		Aliases: []string{"osbpd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.background-processes.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersBackgroundProcessesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersBackgroundProcessesDestroyRequest](organizationsServersBackgroundProcessesDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersBackgroundProcessesDestroyCmd(cmd *cobra.Command, ar
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersBackgroundProcessesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersBackgroundProcessesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersBackgroundProcessesDestroyRequest](cmd, organizationsServersBackgroundProcessesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

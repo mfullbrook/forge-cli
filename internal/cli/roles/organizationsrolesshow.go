@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initOrganizationsRolesShowCmd(parent *cobra.Command) error {
 		Short:   "Get role",
 		Long:    "Show a specific role for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge roles organizations-roles-show --organization <value> --role 651219",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsRolesShowCmd,
 		Aliases: []string{"ors"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.roles.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsRolesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsRolesShowRequest](organizationsRolesShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsRolesShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsRolesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsRolesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsRolesShowRequest](cmd, organizationsRolesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

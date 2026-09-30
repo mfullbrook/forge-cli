@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,15 +15,15 @@ import (
 
 var organizationsServersBackgroundProcessesStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Required: true, Description: "The name of the background process. [required]"},
 	{FlagName: "site-id", FieldPath: "Body.SiteID", Kind: flagutil.FlagKindInt64, Optional: true, Description: "The site to associate the background process with."},
 	{FlagName: "command", Shorthand: "c", FieldPath: "Body.Command", Kind: flagutil.FlagKindString, Required: true, Description: "The command to run. [required]"},
 	{FlagName: "user", Shorthand: "u", FieldPath: "Body.User", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"root", "forge"}, Description: "The user to run the background process as. (options: root, forge) [required]"},
 	{FlagName: "directory", FieldPath: "Body.Directory", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"directory,omitempty"`, Description: "The directory to run the background process from."},
-	{FlagName: "processes", Shorthand: "p", FieldPath: "Body.Processes", Kind: flagutil.FlagKindInt64, Required: true, Description: "The number of processes to run. [required]"},
-	{FlagName: "startsecs", FieldPath: "Body.Startsecs", Kind: flagutil.FlagKindInt64, Optional: true, Description: "The number of seconds to wait before starting the process."},
-	{FlagName: "stopwaitsecs", FieldPath: "Body.Stopwaitsecs", Kind: flagutil.FlagKindInt64, Optional: true, Description: "The number of seconds to wait before stopping the process."},
+	{FlagName: "processes", Shorthand: "p", FieldPath: "Body.Processes", Kind: flagutil.FlagKindInt64, Required: true, HasMinimum: true, Minimum: 1, Description: "The number of processes to run. [required]"},
+	{FlagName: "startsecs", FieldPath: "Body.Startsecs", Kind: flagutil.FlagKindInt64, Optional: true, HasMinimum: true, Minimum: 0, Description: "The number of seconds to wait before starting the process."},
+	{FlagName: "stopwaitsecs", FieldPath: "Body.Stopwaitsecs", Kind: flagutil.FlagKindInt64, Optional: true, HasMinimum: true, Minimum: 0, Description: "The number of seconds to wait before stopping the process."},
 	{FlagName: "stopsignal", FieldPath: "Body.Stopsignal", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"stopsignal,omitempty"`, Description: "The signal to send to stop the process."},
 }
 
@@ -34,15 +33,26 @@ func initOrganizationsServersBackgroundProcessesStoreCmd(parent *cobra.Command) 
 		Use:     "organizations-servers-background-processes-store",
 		Short:   "Create background process",
 		Long:    "Create a new background process from a template.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge background-processes organizations-servers-background-processes-store --organization <value> --server 627041 --name Custom command runner --command php artisan custom:command --user forge",
+		Example: "  forge background-processes organizations-servers-background-processes-store --organization <value> --server-param 627041 --name 'Custom command runner' --command 'php artisan custom:command' --user forge",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersBackgroundProcessesStoreCmd,
 		Aliases: []string{"osbpst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.background-processes.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersBackgroundProcessesStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersBackgroundProcessesStoreRequest](organizationsServersBackgroundProcessesStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-background-processes-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersBackgroundProcessesStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-background-processes-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -52,16 +62,14 @@ func runOrganizationsServersBackgroundProcessesStoreCmd(cmd *cobra.Command, args
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersBackgroundProcessesStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersBackgroundProcessesStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.background-processes.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersBackgroundProcessesStoreRequest](cmd, organizationsServersBackgroundProcessesStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

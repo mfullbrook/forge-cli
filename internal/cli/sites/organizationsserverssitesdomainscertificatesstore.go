@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsCertificatesStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 	{FlagName: "enable", FieldPath: "Body.Enable", Kind: flagutil.FlagKindBool, Optional: true, Description: "Whether to enable the certificate upon installation."},
@@ -33,15 +32,26 @@ func initOrganizationsServersSitesDomainsCertificatesStoreCmd(parent *cobra.Comm
 		Use:     "organizations-servers-sites-domains-certificates-store",
 		Short:   "Create domain certificate",
 		Long:    "Create a new certificate for a given domain.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-certificates-store --organization <value> --server 637553 --site 922912 --domain-record 181209 --type letsencrypt",
+		Example: "  forge sites organizations-servers-sites-domains-certificates-store --organization <value> --server-param 637553 --site 922912 --domain-record 181209 --type letsencrypt",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsCertificatesStoreCmd,
 		Aliases: []string{"ossdcst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.certificates.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsCertificatesStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsCertificatesStoreRequest](organizationsServersSitesDomainsCertificatesStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-domains-certificates-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesDomainsCertificatesStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-domains-certificates-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -51,16 +61,14 @@ func runOrganizationsServersSitesDomainsCertificatesStoreCmd(cmd *cobra.Command,
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsCertificatesStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsCertificatesStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.domains.certificates.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsCertificatesStoreRequest](cmd, organizationsServersSitesDomainsCertificatesStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

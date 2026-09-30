@@ -9,9 +9,11 @@ import (
 
 func InitRecipesRoot(parent *cobra.Command) error {
 	var RecipesCmd = &cobra.Command{
-		Use:   "recipes",
-		Short: "Operations for recipes",
-		Long:  "Operations for recipes",
+		Use:         "recipes",
+		Short:       "Operations for recipes",
+		Long:        "Operations for recipes",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

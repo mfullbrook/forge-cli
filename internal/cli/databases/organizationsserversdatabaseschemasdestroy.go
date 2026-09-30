@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseSchemasDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "database", FieldPath: "Database", Kind: flagutil.FlagKindInt64, Required: true, Description: "The database ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersDatabaseSchemasDestroyCmd(parent *cobra.Command) er
 		Use:     "organizations-servers-database-schemas-destroy",
 		Short:   "Delete database schema",
 		Long:    "Remove a database schema from the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge databases organizations-servers-database-schemas-destroy --organization <value> --server 299051 --database 838304",
+		Example: "  forge databases organizations-servers-database-schemas-destroy --organization <value> --server-param 299051 --database 838304",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseSchemasDestroyCmd,
 		Aliases: []string{"osdsd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.schemas.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseSchemasDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseSchemasDestroyRequest](organizationsServersDatabaseSchemasDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersDatabaseSchemasDestroyCmd(cmd *cobra.Command, args [
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseSchemasDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseSchemasDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseSchemasDestroyRequest](cmd, organizationsServersDatabaseSchemasDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsInertiaShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsInertiaShowCmd(parent *cobra.Comma
 		Use:     "organizations-servers-sites-integrations-inertia-show",
 		Short:   "Get Inertia integration status",
 		Long:    "Show whether Inertia SSR integration is enabled.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-inertia-show --organization <value> --server 971982 --site 692336",
+		Example: "  forge integrations organizations-servers-sites-integrations-inertia-show --organization <value> --server-param 971982 --site 692336",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsInertiaShowCmd,
 		Aliases: []string{"ossiis"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.inertia.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsInertiaShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsInertiaShowRequest](organizationsServersSitesIntegrationsInertiaShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsInertiaShowCmd(cmd *cobra.Command, 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsInertiaShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsInertiaShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsInertiaShowRequest](cmd, organizationsServersSitesIntegrationsInertiaShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

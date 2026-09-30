@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initOrganizationsTeamsInvitesShowCmd(parent *cobra.Command) error {
 		Short:   "Get team invitation",
 		Long:    "Show a pending invitation for the team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge teams organizations-teams-invites-show --organization <value> --team 288617 --invitation 626006",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsInvitesShowCmd,
 		Aliases: []string{"otis"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.invites.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsInvitesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsInvitesShowRequest](organizationsTeamsInvitesShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsTeamsInvitesShowCmd(cmd *cobra.Command, args []string) erro
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsInvitesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsInvitesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsInvitesShowRequest](cmd, organizationsTeamsInvitesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

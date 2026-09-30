@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseSchemasShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "database", FieldPath: "Database", Kind: flagutil.FlagKindInt64, Required: true, Description: "The database ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersDatabaseSchemasShowCmd(parent *cobra.Command) error
 		Use:     "organizations-servers-database-schemas-show",
 		Short:   "Get database schema",
 		Long:    "Get a specific database schema associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge databases organizations-servers-database-schemas-show --organization <value> --server 986489 --database 881865",
+		Example: "  forge databases organizations-servers-database-schemas-show --organization <value> --server-param 986489 --database 881865",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseSchemasShowCmd,
 		Aliases: []string{"osdss"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.schemas.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseSchemasShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseSchemasShowRequest](organizationsServersDatabaseSchemasShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersDatabaseSchemasShowCmd(cmd *cobra.Command, args []st
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseSchemasShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseSchemasShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseSchemasShowRequest](cmd, organizationsServersDatabaseSchemasShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

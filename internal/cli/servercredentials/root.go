@@ -9,9 +9,11 @@ import (
 
 func InitServerCredentialsRoot(parent *cobra.Command) error {
 	var ServerCredentialsCmd = &cobra.Command{
-		Use:   "server-credentials",
-		Short: "Operations for server-credentials",
-		Long:  "Operations for server-credentials",
+		Use:         "server-credentials",
+		Short:       "Operations for server-credentials",
+		Long:        "Operations for server-credentials",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

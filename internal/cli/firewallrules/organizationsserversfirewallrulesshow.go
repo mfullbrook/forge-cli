@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersFirewallRulesShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "rule", Shorthand: "r", FieldPath: "Rule", Kind: flagutil.FlagKindInt64, Required: true, Description: "The rule ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersFirewallRulesShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-firewall-rules-show",
 		Short:   "Get server firewall rule",
 		Long:    "Get a specific firewall rule associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge firewall-rules organizations-servers-firewall-rules-show --organization <value> --server 626909 --rule 462429",
+		Example: "  forge firewall-rules organizations-servers-firewall-rules-show --organization <value> --server-param 626909 --rule 462429",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersFirewallRulesShowCmd,
 		Aliases: []string{"osfrs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.firewall-rules.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersFirewallRulesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersFirewallRulesShowRequest](organizationsServersFirewallRulesShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersFirewallRulesShowCmd(cmd *cobra.Command, args []stri
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersFirewallRulesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersFirewallRulesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersFirewallRulesShowRequest](cmd, organizationsServersFirewallRulesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

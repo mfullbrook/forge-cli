@@ -9,9 +9,11 @@ import (
 
 func InitDeploymentsRoot(parent *cobra.Command) error {
 	var DeploymentsCmd = &cobra.Command{
-		Use:   "deployments",
-		Short: "Operations for deployments",
-		Long:  "Operations for deployments",
+		Use:         "deployments",
+		Short:       "Operations for deployments",
+		Long:        "Operations for deployments",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

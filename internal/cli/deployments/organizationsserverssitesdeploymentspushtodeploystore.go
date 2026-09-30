@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDeploymentsPushToDeployStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesDeploymentsPushToDeployStoreCmd(parent *cobra.
 		Use:     "organizations-servers-sites-deployments-push-to-deploy-store",
 		Short:   "Create push to deploy configuration",
 		Long:    "Enable push to deploy for the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge deployments organizations-servers-sites-deployments-push-to-deploy-store --organization <value> --server 502974 --site 425375",
+		Example: "  forge deployments organizations-servers-sites-deployments-push-to-deploy-store --organization <value> --server-param 502974 --site 425375",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDeploymentsPushToDeployStoreCmd,
 		Aliases: []string{"ossdptds"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.deployments.push-to-deploy.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDeploymentsPushToDeployStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDeploymentsPushToDeployStoreRequest](organizationsServersSitesDeploymentsPushToDeployStoreCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesDeploymentsPushToDeployStoreCmd(cmd *cobra.Comm
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDeploymentsPushToDeployStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDeploymentsPushToDeployStoreCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDeploymentsPushToDeployStoreRequest](cmd, organizationsServersSitesDeploymentsPushToDeployStoreCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

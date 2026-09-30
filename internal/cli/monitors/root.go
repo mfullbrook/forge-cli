@@ -9,9 +9,11 @@ import (
 
 func InitMonitorsRoot(parent *cobra.Command) error {
 	var MonitorsCmd = &cobra.Command{
-		Use:   "monitors",
-		Short: "Operations for monitors",
-		Long:  "Operations for monitors",
+		Use:         "monitors",
+		Short:       "Operations for monitors",
+		Long:        "Operations for monitors",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

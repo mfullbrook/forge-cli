@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initOrganizationsTeamsServerCredentialsDestroyCmd(parent *cobra.Command) er
 		Short:   "Delete a server credential share",
 		Long:    "Unshare a server credential with a team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge server-credentials organizations-teams-server-credentials-destroy --organization <value> --team 543042 --credential 98202",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsServerCredentialsDestroyCmd,
 		Aliases: []string{"otscd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.server-credentials.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsServerCredentialsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsServerCredentialsDestroyRequest](organizationsTeamsServerCredentialsDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsTeamsServerCredentialsDestroyCmd(cmd *cobra.Command, args [
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsServerCredentialsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsServerCredentialsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsServerCredentialsDestroyRequest](cmd, organizationsTeamsServerCredentialsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

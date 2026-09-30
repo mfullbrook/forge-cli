@@ -9,9 +9,11 @@ import (
 
 func InitStorageProvidersRoot(parent *cobra.Command) error {
 	var StorageProvidersCmd = &cobra.Command{
-		Use:   "storage-providers",
-		Short: "Operations for storage-providers",
-		Long:  "Operations for storage-providers",
+		Use:         "storage-providers",
+		Short:       "Operations for storage-providers",
+		Long:        "Operations for storage-providers",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

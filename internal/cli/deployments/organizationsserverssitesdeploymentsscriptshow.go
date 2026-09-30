@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDeploymentsScriptShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesDeploymentsScriptShowCmd(parent *cobra.Command
 		Use:     "organizations-servers-sites-deployments-script-show",
 		Short:   "Get deployment script",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge deployments organizations-servers-sites-deployments-script-show --organization <value> --server 191872 --site 237810",
+		Example: "  forge deployments organizations-servers-sites-deployments-script-show --organization <value> --server-param 191872 --site 237810",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDeploymentsScriptShowCmd,
 		Aliases: []string{"ossdss"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.deployments.script.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDeploymentsScriptShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDeploymentsScriptShowRequest](organizationsServersSitesDeploymentsScriptShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesDeploymentsScriptShowCmd(cmd *cobra.Command, ar
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDeploymentsScriptShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDeploymentsScriptShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDeploymentsScriptShowRequest](cmd, organizationsServersSitesDeploymentsScriptShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

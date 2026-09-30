@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesScheduledJobsDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "job", Shorthand: "j", FieldPath: "Job", Kind: flagutil.FlagKindInt64, Required: true, Description: "The job ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesScheduledJobsDestroyCmd(parent *cobra.Command)
 		Use:     "organizations-servers-sites-scheduled-jobs-destroy",
 		Short:   "Delete site scheduled job",
 		Long:    "Delete a specific scheduled job associated with the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge scheduled-jobs organizations-servers-sites-scheduled-jobs-destroy --organization <value> --server 340206 --site 705093 --job 262101",
+		Example: "  forge scheduled-jobs organizations-servers-sites-scheduled-jobs-destroy --organization <value> --server-param 340206 --site 705093 --job 262101",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesScheduledJobsDestroyCmd,
 		Aliases: []string{"osssjd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.scheduled-jobs.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesScheduledJobsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesScheduledJobsDestroyRequest](organizationsServersSitesScheduledJobsDestroyCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesScheduledJobsDestroyCmd(cmd *cobra.Command, arg
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesScheduledJobsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesScheduledJobsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesScheduledJobsDestroyRequest](cmd, organizationsServersSitesScheduledJobsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

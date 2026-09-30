@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesComposerCredentialsIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesComposerCredentialsIndexCmd(parent *cobra.Comm
 		Use:     "organizations-servers-sites-composer-credentials-index",
 		Short:   "Get composer credentials for the site",
 		Long:    "Processing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-composer-credentials-index --organization <value> --server 103955 --site 105911",
+		Example: "  forge sites organizations-servers-sites-composer-credentials-index --organization <value> --server-param 103955 --site 105911",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesComposerCredentialsIndexCmd,
 		Aliases: []string{"osscci"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.composer.credentials.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesComposerCredentialsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesComposerCredentialsIndexRequest](organizationsServersSitesComposerCredentialsIndexCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesComposerCredentialsIndexCmd(cmd *cobra.Command,
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesComposerCredentialsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesComposerCredentialsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesComposerCredentialsIndexRequest](cmd, organizationsServersSitesComposerCredentialsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

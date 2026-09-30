@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSSHKeysDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "key", Shorthand: "k", FieldPath: "Key", Kind: flagutil.FlagKindInt64, Required: true, Description: "The key ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSshKeysDestroyCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-ssh-keys-destroy",
 		Short:   "Delete server SSH key",
 		Long:    "Remove an SSH key from the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge SSH-keys organizations-servers-ssh-keys-destroy --organization <value> --server 997033 --key 324709",
+		Example: "  forge SSH-keys organizations-servers-ssh-keys-destroy --organization <value> --server-param 997033 --key 324709",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSshKeysDestroyCmd,
 		Aliases: []string{"osskd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.ssh-keys.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSSHKeysDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSSHKeysDestroyRequest](organizationsServersSSHKeysDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSshKeysDestroyCmd(cmd *cobra.Command, args []string)
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSSHKeysDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSSHKeysDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSSHKeysDestroyRequest](cmd, organizationsServersSSHKeysDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

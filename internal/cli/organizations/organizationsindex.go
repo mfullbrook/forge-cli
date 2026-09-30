@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,7 +25,11 @@ func initOrganizationsIndexCmd(parent *cobra.Command) error {
 		Short:   "List organizations",
 		Long:    "Show all organizations the user has access to.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge organizations index",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsIndexCmd,
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsIndexRequest](organizationsIndexCmdMeta); err != nil {
@@ -41,16 +44,11 @@ func runOrganizationsIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsIndexRequest](cmd, organizationsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

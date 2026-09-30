@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesRedirectRulesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-created_at`."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
@@ -33,9 +32,13 @@ func initOrganizationsServersSitesRedirectRulesIndexCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-sites-redirect-rules-index",
 		Short:   "List site redirect rules",
 		Long:    "List all redirect rules associated with the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge redirect-rules organizations-servers-sites-redirect-rules-index --organization <value> --server 910445 --site 739152",
+		Example: "  forge redirect-rules organizations-servers-sites-redirect-rules-index --organization <value> --server-param 910445 --site 739152",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesRedirectRulesIndexCmd,
 		Aliases: []string{"ossrri"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.redirect-rules.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesRedirectRulesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesRedirectRulesIndexRequest](organizationsServersSitesRedirectRulesIndexCmdMeta); err != nil {
@@ -50,16 +53,11 @@ func runOrganizationsServersSitesRedirectRulesIndexCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesRedirectRulesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesRedirectRulesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesRedirectRulesIndexRequest](cmd, organizationsServersSitesRedirectRulesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

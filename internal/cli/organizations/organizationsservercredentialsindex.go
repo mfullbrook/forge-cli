@@ -23,16 +23,28 @@ var organizationsServerCredentialsIndexCmdMeta = []flagutil.FlagMeta{
 // initOrganizationsServerCredentialsIndexCmd initializes the organizations-server-credentials-index command.
 func initOrganizationsServerCredentialsIndexCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "server-credentials-index",
+		Use:     "server-credentials-index [organization]",
 		Short:   "List server credentials",
 		Long:    "Show all server credentials for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge organizations server-credentials-index --organization <value>",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runOrganizationsServerCredentialsIndexCmd,
 		Aliases: []string{"sci"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.server-credentials.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServerCredentialsIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServerCredentialsIndexRequest](organizationsServerCredentialsIndexCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-server-credentials-index: %w", err)
+	}
+	if err := flagutil.DeclarePositionalFlag(cmd, "organization", "The organization slug (or pass it as the [organization] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "organization", Summary: "The organization slug", Required: true, SatisfiedBy: []string{"organization"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for organizations-server-credentials-index: %w", err)
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -43,16 +55,14 @@ func runOrganizationsServerCredentialsIndexCmd(cmd *cobra.Command, args []string
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServerCredentialsIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServerCredentialsIndexCmdMeta); err != nil {
-			return err
-		}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServerCredentialsIndexRequest](cmd, organizationsServerCredentialsIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

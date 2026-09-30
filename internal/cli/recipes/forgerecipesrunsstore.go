@@ -23,18 +23,37 @@ var forgeRecipesRunsStoreCmdMeta = []flagutil.FlagMeta{
 // initForgeRecipesRunsStoreCmd initializes the forge-recipes-runs-store command.
 func initForgeRecipesRunsStoreCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "forge-recipes-runs-store",
+		Use:     "forge-recipes-runs-store [forge-recipe]",
 		Short:   "Create Forge recipe run",
 		Long:    "Run a Forge recipe on specified servers.\n\nProcessing mode: <small><code>async</code></small>",
 		Example: "  forge recipes forge-recipes-runs-store --forge-recipe 968767 --servers '[1,2,3]'",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runForgeRecipesRunsStoreCmd,
 		Aliases: []string{"frrs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "forge-recipes.runs.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, forgeRecipesRunsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.ForgeRecipesRunsStoreRequest](forgeRecipesRunsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for forge-recipes-runs-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, forgeRecipesRunsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for forge-recipes-runs-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
+	if err := flagutil.DeclarePositionalFlag(cmd, "forge-recipe", "The forge recipe ID (or pass it as the [forge-recipe] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "forge-recipe", Summary: "The forge recipe ID", Required: true, SatisfiedBy: []string{"forge-recipe"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for forge-recipes-runs-store: %w", err)
+	}
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -44,16 +63,17 @@ func runForgeRecipesRunsStoreCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, forgeRecipesRunsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, forgeRecipesRunsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "forge-recipes.runs.store")
+	}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.ForgeRecipesRunsStoreRequest](cmd, forgeRecipesRunsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

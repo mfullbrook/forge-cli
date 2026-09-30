@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmd(paren
 		Use:     "organizations-servers-sites-integrations-laravel-maintenance-destroy",
 		Short:   "Delete Laravel Maintenance integration",
 		Long:    "Disable maintenance mode for the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-laravel-maintenance-destroy --organization <value> --server 533223 --site 348988",
+		Example: "  forge integrations organizations-servers-sites-integrations-laravel-maintenance-destroy --organization <value> --server-param 533223 --site 348988",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmd,
 		Aliases: []string{"ossilmd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.laravel-maintenance.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsLaravelMaintenanceDestroyRequest](organizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmd(cmd *c
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsLaravelMaintenanceDestroyRequest](cmd, organizationsServersSitesIntegrationsLaravelMaintenanceDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsReverbShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsReverbShowCmd(parent *cobra.Comman
 		Use:     "organizations-servers-sites-integrations-reverb-show",
 		Short:   "Get Laravel Reverb integration status",
 		Long:    "Show whether Laravel Reverb integration is enabled.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-reverb-show --organization <value> --server 381057 --site 3894",
+		Example: "  forge integrations organizations-servers-sites-integrations-reverb-show --organization <value> --server-param 381057 --site 3894",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsReverbShowCmd,
 		Aliases: []string{"ossirs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.reverb.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsReverbShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsReverbShowRequest](organizationsServersSitesIntegrationsReverbShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsReverbShowCmd(cmd *cobra.Command, a
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsReverbShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsReverbShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsReverbShowRequest](cmd, organizationsServersSitesIntegrationsReverbShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

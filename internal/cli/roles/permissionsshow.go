@@ -21,16 +21,28 @@ var permissionsShowCmdMeta = []flagutil.FlagMeta{
 // initPermissionsShowCmd initializes the permissions-show command.
 func initPermissionsShowCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "permissions-show",
+		Use:     "permissions-show [permission]",
 		Short:   "Get permission",
 		Long:    "Show a specific permission.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge roles permissions-show --permission 234972",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runPermissionsShowCmd,
 		Aliases: []string{"ps"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "permissions.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, permissionsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.PermissionsShowRequest](permissionsShowCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for permissions-show: %w", err)
+	}
+	if err := flagutil.DeclarePositionalFlag(cmd, "permission", "The permission ID (or pass it as the [permission] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "permission", Summary: "The permission ID", Required: true, SatisfiedBy: []string{"permission"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for permissions-show: %w", err)
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -41,16 +53,14 @@ func runPermissionsShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, permissionsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, permissionsShowCmdMeta); err != nil {
-			return err
-		}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.PermissionsShowRequest](cmd, permissionsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

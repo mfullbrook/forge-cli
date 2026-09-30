@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesSecurityRulesShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "security-rule", FieldPath: "SecurityRule", Kind: flagutil.FlagKindInt64, Required: true, Description: "The security rule ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesSecurityRulesShowCmd(parent *cobra.Command) er
 		Use:     "organizations-servers-sites-security-rules-show",
 		Short:   "Get site security rule",
 		Long:    "Get a specific security rule associated with the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge security-rules organizations-servers-sites-security-rules-show --organization <value> --server 120041 --site 233971 --security-rule 908202",
+		Example: "  forge security-rules organizations-servers-sites-security-rules-show --organization <value> --server-param 120041 --site 233971 --security-rule 908202",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesSecurityRulesShowCmd,
 		Aliases: []string{"osssrs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.security-rules.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesSecurityRulesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesSecurityRulesShowRequest](organizationsServersSitesSecurityRulesShowCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesSecurityRulesShowCmd(cmd *cobra.Command, args [
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesSecurityRulesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesSecurityRulesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesSecurityRulesShowRequest](cmd, organizationsServersSitesSecurityRulesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

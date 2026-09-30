@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "sort", FieldPath: "Sort", Kind: flagutil.FlagKindString, Optional: true, Description: "Available sorts are `name`, `created_at`, `updated_at`. You can sort by multiple options by separating them with a comma. To sort in descending order, use `-` sign in front of the sort, for example: `-name`."},
 	{FlagName: "include", Shorthand: "i", FieldPath: "Include", Kind: flagutil.FlagKindString, Optional: true, Description: "Available includes are `server`, `serverCount`, `serverExists`, `tags`, `tagsCount`, `tagsExists`, `latestDeployment`, `latestDeploymentCount`, `latestDeploymentExists`, `securityRules`, `securityRulesCount`, `securityRulesExists`, `redirectRules`, `redirectRulesCount`, `redirectRulesExists`. You can include multiple options by separating them with a comma."},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
@@ -30,9 +29,13 @@ func initOrganizationsServersSitesIndexCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-sites-index",
 		Short:   "List sites for server",
 		Long:    "List all sites associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-index --organization <value> --server 235028",
+		Example: "  forge sites organizations-servers-sites-index --organization <value> --server-param 235028",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIndexCmd,
 		Aliases: []string{"ossi"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIndexRequest](organizationsServersSitesIndexCmdMeta); err != nil {
@@ -47,16 +50,11 @@ func runOrganizationsServersSitesIndexCmd(cmd *cobra.Command, args []string) err
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIndexRequest](cmd, organizationsServersSitesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

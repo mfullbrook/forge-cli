@@ -21,15 +21,27 @@ var providersShowCmdMeta = []flagutil.FlagMeta{
 // initProvidersShowCmd initializes the providers-show command.
 func initProvidersShowCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "show",
+		Use:     "show [provider]",
 		Short:   "Get provider",
 		Long:    "Show the provider.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge providers show --provider 268374",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runProvidersShowCmd,
+		Annotations: map[string]string{
+			"speakeasy_operation": "providers.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, providersShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.ProvidersShowRequest](providersShowCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for providers-show: %w", err)
+	}
+	if err := flagutil.DeclarePositionalFlag(cmd, "provider", "The provider ID (or pass it as the [provider] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "provider", Summary: "The provider ID", Required: true, SatisfiedBy: []string{"provider"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for providers-show: %w", err)
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -40,16 +52,14 @@ func runProvidersShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, providersShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, providersShowCmdMeta); err != nil {
-			return err
-		}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.ProvidersShowRequest](cmd, providersShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initOrganizationsRecipesShowCmd(parent *cobra.Command) error {
 		Short:   "Get recipe",
 		Long:    "Show the recipe for the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge recipes organizations-recipes-show --organization <value> --recipe 215517",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsRecipesShowCmd,
 		Aliases: []string{"orsh"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.recipes.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsRecipesShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsRecipesShowRequest](organizationsRecipesShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsRecipesShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsRecipesShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsRecipesShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsRecipesShowRequest](cmd, organizationsRecipesShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

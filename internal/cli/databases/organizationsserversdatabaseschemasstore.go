@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseSchemasStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Required: true, Description: "The name of the database to create. [required]"},
 	{FlagName: "user", Shorthand: "u", FieldPath: "Body.User", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"user,omitempty"`, Description: "The name of the database user to create. Only needed if a new user should be created alongside the database."},
 	{FlagName: "password", Shorthand: "p", FieldPath: "Body.Password", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"password,omitempty"`, Description: "The password for the database user. Only used if the user is provided."},
@@ -28,15 +27,26 @@ func initOrganizationsServersDatabaseSchemasStoreCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-database-schemas-store",
 		Short:   "Create database schema",
 		Long:    "Add a new database schema to the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge databases organizations-servers-database-schemas-store --organization <value> --server 904875 --name forge",
+		Example: "  forge databases organizations-servers-database-schemas-store --organization <value> --server-param 904875 --name forge",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseSchemasStoreCmd,
 		Aliases: []string{"osdsst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.schemas.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseSchemasStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseSchemasStoreRequest](organizationsServersDatabaseSchemasStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-database-schemas-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersDatabaseSchemasStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-database-schemas-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -46,16 +56,14 @@ func runOrganizationsServersDatabaseSchemasStoreCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseSchemasStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseSchemasStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.database.schemas.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseSchemasStoreRequest](cmd, organizationsServersDatabaseSchemasStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

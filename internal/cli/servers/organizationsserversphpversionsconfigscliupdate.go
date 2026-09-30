@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpVersionsConfigsCliUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "php-version", Shorthand: "p", FieldPath: "PhpVersion", Kind: flagutil.FlagKindInt64, Required: true, Description: "The php version ID [required]"},
 	{FlagName: "config-param", Shorthand: "c", FieldPath: "Body.Config", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
 }
@@ -27,15 +26,26 @@ func initOrganizationsServersPhpVersionsConfigsCliUpdateCmd(parent *cobra.Comman
 		Use:     "organizations-servers-php-versions-configs-cli-update",
 		Short:   "Update PHP version CLI config",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-php-versions-configs-cli-update --organization <value> --server 121987 --php-version 680535 --config-param <value>",
+		Example: "  forge servers organizations-servers-php-versions-configs-cli-update --organization <value> --server-param 121987 --php-version 680535 --config-param <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpVersionsConfigsCliUpdateCmd,
 		Aliases: []string{"ospvccu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.versions.configs.cli.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpVersionsConfigsCliUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpVersionsConfigsCliUpdateRequest](organizationsServersPhpVersionsConfigsCliUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-php-versions-configs-cli-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersPhpVersionsConfigsCliUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-php-versions-configs-cli-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -45,16 +55,14 @@ func runOrganizationsServersPhpVersionsConfigsCliUpdateCmd(cmd *cobra.Command, a
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpVersionsConfigsCliUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpVersionsConfigsCliUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.php.versions.configs.cli.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpVersionsConfigsCliUpdateRequest](cmd, organizationsServersPhpVersionsConfigsCliUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

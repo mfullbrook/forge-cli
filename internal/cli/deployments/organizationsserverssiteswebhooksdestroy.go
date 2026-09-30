@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesWebhooksDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "deployment-webhook", FieldPath: "DeploymentWebhook", Kind: flagutil.FlagKindInt64, Required: true, Description: "The deployment webhook ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesWebhooksDestroyCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-sites-webhooks-destroy",
 		Short:   "Delete site webhook",
 		Long:    "Delete a specific webhook from the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge deployments organizations-servers-sites-webhooks-destroy --organization <value> --server 926247 --site 994286 --deployment-webhook 729649",
+		Example: "  forge deployments organizations-servers-sites-webhooks-destroy --organization <value> --server-param 926247 --site 994286 --deployment-webhook 729649",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesWebhooksDestroyCmd,
 		Aliases: []string{"osswd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.webhooks.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesWebhooksDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesWebhooksDestroyRequest](organizationsServersSitesWebhooksDestroyCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesWebhooksDestroyCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesWebhooksDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesWebhooksDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesWebhooksDestroyRequest](cmd, organizationsServersSitesWebhooksDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

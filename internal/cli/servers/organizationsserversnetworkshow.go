@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersNetworkShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersNetworkShowCmd initializes the organizations-servers-network-show command.
@@ -25,9 +24,13 @@ func initOrganizationsServersNetworkShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-network-show",
 		Short:   "Get server network",
 		Long:    "Show the servers in this server's network.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-network-show --organization <value> --server 714670",
+		Example: "  forge servers organizations-servers-network-show --organization <value> --server-param 714670",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersNetworkShowCmd,
 		Aliases: []string{"osns"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.network.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersNetworkShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersNetworkShowRequest](organizationsServersNetworkShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersNetworkShowCmd(cmd *cobra.Command, args []string) er
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersNetworkShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersNetworkShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersNetworkShowRequest](cmd, organizationsServersNetworkShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

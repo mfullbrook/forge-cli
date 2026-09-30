@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseBackupsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "storage-provider-id", FieldPath: "Body.StorageProviderID", Kind: flagutil.FlagKindInt64, Required: true, Description: "[required]"},
 	{FlagName: "name", FieldPath: "Body.Name", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"name,omitempty"`, Description: "string value"},
 	{FlagName: "bucket", Shorthand: "b", FieldPath: "Body.Bucket", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"bucket,omitempty"`, Description: "string value"},
@@ -25,7 +24,7 @@ var organizationsServersDatabaseBackupsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "day", FieldPath: "Body.Day", Kind: flagutil.FlagKindEnum, Optional: true, EnumValues: []string{"0", "1", "2", "3", "4", "5", "6"}, Description: "options: 0, 1, 2, 3, 4, 5, 6"},
 	{FlagName: "time", Shorthand: "t", FieldPath: "Body.Time", Kind: flagutil.FlagKindEnum, Optional: true, EnumValues: []string{"00:00", "00:30", "01:00", "01:30", "02:00", "02:30", "03:00", "03:30", "04:00", "04:30", "05:00", "05:30", "06:00", "06:30", "07:00", "07:30", "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00", "23:30"}, Description: "options: 00:00, 00:30, 01:00, 01:30, 02:00, 02:30, 03:00, 03:30, 04:00, 04:30, 05:00, 05:30, 06:00, 06:30, 07:00, 07:30, 08:00, 08:30, 09:00, 09:30, 10:00, 10:30, 11:00, 11:30, 12:00, 12:30, 13:00, 13:30, 14:00, 14:30, 15:00, 15:30, 16:00, 16:30, 17:00, 17:30, 18:00, 18:30, 19:00, 19:30, 20:00, 20:30, 21:00, 21:30, 22:00, 22:30, 23:00, 23:30"},
 	{FlagName: "cron", Shorthand: "c", FieldPath: "Body.Cron", Kind: flagutil.FlagKindString, Optional: true, Description: "string value"},
-	{FlagName: "retention", Shorthand: "r", FieldPath: "Body.Retention", Kind: flagutil.FlagKindInt64, Required: true, Description: "[required]"},
+	{FlagName: "retention", Shorthand: "r", FieldPath: "Body.Retention", Kind: flagutil.FlagKindInt64, Required: true, HasMinimum: true, Minimum: 1, HasMaximum: true, Maximum: 8760, Description: "[required]"},
 	{FlagName: "notification-email", FieldPath: "Body.NotificationEmail", Kind: flagutil.FlagKindJSON, Optional: true, Annotations: `json:"notification_email,omitempty"`, Description: "string value"},
 	{FlagName: "database-ids", FieldPath: "Body.DatabaseIds", Kind: flagutil.FlagKindJSON, Required: true, Annotations: `json:"database_ids"`, Description: "[required]"},
 }
@@ -36,15 +35,26 @@ func initOrganizationsServersDatabaseBackupsStoreCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-database-backups-store",
 		Short:   "Create backup configuration",
 		Long:    "Create a new backup configuration for the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge backups organizations-servers-database-backups-store --organization <value> --server 176687 --storage-provider-id 890655 --frequency daily --retention 430741",
+		Example: "  forge backups organizations-servers-database-backups-store --organization <value> --server-param 176687 --storage-provider-id 890655 --frequency daily --retention 430741",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseBackupsStoreCmd,
 		Aliases: []string{"osdbst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.backups.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseBackupsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseBackupsStoreRequest](organizationsServersDatabaseBackupsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-database-backups-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersDatabaseBackupsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-database-backups-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -54,16 +64,14 @@ func runOrganizationsServersDatabaseBackupsStoreCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseBackupsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseBackupsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.database.backups.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseBackupsStoreRequest](cmd, organizationsServersDatabaseBackupsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

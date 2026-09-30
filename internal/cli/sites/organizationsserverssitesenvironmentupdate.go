@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesEnvironmentUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "environment", FieldPath: "Body.Environment", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
 	{FlagName: "cache", Shorthand: "c", FieldPath: "Body.Cache", Kind: flagutil.FlagKindBool, Optional: true, Description: "boolean flag"},
@@ -30,15 +29,26 @@ func initOrganizationsServersSitesEnvironmentUpdateCmd(parent *cobra.Command) er
 		Use:     "organizations-servers-sites-environment-update",
 		Short:   "Update .env content",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-environment-update --organization <value> --server 971088 --site 188376 --environment <value>",
+		Example: "  forge sites organizations-servers-sites-environment-update --organization <value> --server-param 971088 --site 188376 --environment <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesEnvironmentUpdateCmd,
 		Aliases: []string{"osseu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.environment.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesEnvironmentUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesEnvironmentUpdateRequest](organizationsServersSitesEnvironmentUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-environment-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesEnvironmentUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-environment-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -48,16 +58,14 @@ func runOrganizationsServersSitesEnvironmentUpdateCmd(cmd *cobra.Command, args [
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesEnvironmentUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesEnvironmentUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.environment.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesEnvironmentUpdateRequest](cmd, organizationsServersSitesEnvironmentUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

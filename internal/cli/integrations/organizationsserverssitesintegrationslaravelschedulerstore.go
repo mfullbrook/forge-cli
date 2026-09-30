@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesIntegrationsLaravelSchedulerStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesIntegrationsLaravelSchedulerStoreCmd(parent *c
 		Use:     "organizations-servers-sites-integrations-laravel-scheduler-store",
 		Short:   "Create Laravel Scheduler integration job",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge integrations organizations-servers-sites-integrations-laravel-scheduler-store --organization <value> --server 514855 --site 35552",
+		Example: "  forge integrations organizations-servers-sites-integrations-laravel-scheduler-store --organization <value> --server-param 514855 --site 35552",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesIntegrationsLaravelSchedulerStoreCmd,
 		Aliases: []string{"ossilsst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.integrations.laravel-scheduler.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesIntegrationsLaravelSchedulerStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesIntegrationsLaravelSchedulerStoreRequest](organizationsServersSitesIntegrationsLaravelSchedulerStoreCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesIntegrationsLaravelSchedulerStoreCmd(cmd *cobra
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesIntegrationsLaravelSchedulerStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesIntegrationsLaravelSchedulerStoreCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesIntegrationsLaravelSchedulerStoreRequest](cmd, organizationsServersSitesIntegrationsLaravelSchedulerStoreCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

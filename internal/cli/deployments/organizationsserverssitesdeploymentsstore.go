@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDeploymentsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesDeploymentsStoreCmd(parent *cobra.Command) err
 		Use:     "organizations-servers-sites-deployments-store",
 		Short:   "Create deployment",
 		Long:    "Trigger a new deployment for the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge deployments organizations-servers-sites-deployments-store --organization <value> --server 879138 --site 85994",
+		Example: "  forge deployments organizations-servers-sites-deployments-store --organization <value> --server-param 879138 --site 85994",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDeploymentsStoreCmd,
 		Aliases: []string{"ossdst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.deployments.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDeploymentsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDeploymentsStoreRequest](organizationsServersSitesDeploymentsStoreCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesDeploymentsStoreCmd(cmd *cobra.Command, args []
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDeploymentsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDeploymentsStoreCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDeploymentsStoreRequest](cmd, organizationsServersSitesDeploymentsStoreCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

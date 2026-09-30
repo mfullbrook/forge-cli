@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -27,8 +26,12 @@ func initOrganizationsTeamsInvitesDestroyCmd(parent *cobra.Command) error {
 		Short:   "Delete team invitation",
 		Long:    "Cancel a pending invitation for the team.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge teams organizations-teams-invites-destroy --organization <value> --team 389300 --invitation 859479",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsTeamsInvitesDestroyCmd,
 		Aliases: []string{"otid"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.teams.invites.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsTeamsInvitesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsTeamsInvitesDestroyRequest](organizationsTeamsInvitesDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsTeamsInvitesDestroyCmd(cmd *cobra.Command, args []string) e
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsTeamsInvitesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsTeamsInvitesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsTeamsInvitesDestroyRequest](cmd, organizationsTeamsInvitesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

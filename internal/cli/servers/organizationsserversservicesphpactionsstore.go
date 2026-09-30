@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersServicesPhpActionsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "action", Shorthand: "a", FieldPath: "Body.Action", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"reboot"}, Description: "| |\n|---|\n| `reboot` <br/> Reboot PHP-FPM for a specific version | (options: reboot) [required]"},
 	{FlagName: "version-param", Shorthand: "v", FieldPath: "Body.Version", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"php5", "php56-old", "php56", "php70", "php71", "php72", "php73", "php74", "php80", "php81", "php82", "php83", "php84", "php85"}, Description: "options: php5, php56-old, php56, php70, php71, php72, php73, php74, php80, php81, php82, php83, php84, php85 [required]"},
 }
@@ -27,15 +26,26 @@ func initOrganizationsServersServicesPhpActionsStoreCmd(parent *cobra.Command) e
 		Use:     "organizations-servers-services-php-actions-store",
 		Short:   "Perform PHP action",
 		Long:    "Run an action on a specific PHP version.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-services-php-actions-store --organization <value> --server 620831 --action reboot --version-param php56",
+		Example: "  forge servers organizations-servers-services-php-actions-store --organization <value> --server-param 620831 --action reboot --version-param php56",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersServicesPhpActionsStoreCmd,
 		Aliases: []string{"osspas"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.services.php.actions.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersServicesPhpActionsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersServicesPhpActionsStoreRequest](organizationsServersServicesPhpActionsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-services-php-actions-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersServicesPhpActionsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-services-php-actions-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -45,16 +55,14 @@ func runOrganizationsServersServicesPhpActionsStoreCmd(cmd *cobra.Command, args 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersServicesPhpActionsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersServicesPhpActionsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.services.php.actions.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersServicesPhpActionsStoreRequest](cmd, organizationsServersServicesPhpActionsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

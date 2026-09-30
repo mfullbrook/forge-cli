@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersLogsDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "key", Shorthand: "k", FieldPath: "Key", Kind: flagutil.FlagKindString, Required: true, Description: "[required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersLogsDestroyCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-logs-destroy",
 		Short:   "Delete server log content",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge logs organizations-servers-logs-destroy --organization <value> --server 692565 --key <key>",
+		Example: "  forge logs organizations-servers-logs-destroy --organization <value> --server-param 692565 --key <key>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersLogsDestroyCmd,
 		Aliases: []string{"osld"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.logs.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersLogsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersLogsDestroyRequest](organizationsServersLogsDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersLogsDestroyCmd(cmd *cobra.Command, args []string) er
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersLogsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersLogsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersLogsDestroyRequest](cmd, organizationsServersLogsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

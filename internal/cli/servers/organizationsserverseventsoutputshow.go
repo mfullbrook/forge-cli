@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersEventsOutputShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "event", Shorthand: "e", FieldPath: "Event", Kind: flagutil.FlagKindInt64, Required: true, Description: "The event ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersEventsOutputShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-events-output-show",
 		Short:   "Get server event output",
 		Long:    "Get the output for a specific event associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-events-output-show --organization <value> --server 759889 --event 335460",
+		Example: "  forge servers organizations-servers-events-output-show --organization <value> --server-param 759889 --event 335460",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersEventsOutputShowCmd,
 		Aliases: []string{"oseos"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.events.output.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersEventsOutputShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersEventsOutputShowRequest](organizationsServersEventsOutputShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersEventsOutputShowCmd(cmd *cobra.Command, args []strin
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersEventsOutputShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersEventsOutputShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersEventsOutputShowRequest](cmd, organizationsServersEventsOutputShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

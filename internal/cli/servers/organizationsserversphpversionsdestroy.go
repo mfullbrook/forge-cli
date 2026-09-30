@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpVersionsDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "php-version", Shorthand: "p", FieldPath: "PhpVersion", Kind: flagutil.FlagKindInt64, Required: true, Description: "The php version ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersPhpVersionsDestroyCmd(parent *cobra.Command) error 
 		Use:     "organizations-servers-php-versions-destroy",
 		Short:   "Delete installed PHP version",
 		Long:    "Uninstall the PHP version from the server\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-php-versions-destroy --organization <value> --server 352034 --php-version 425846",
+		Example: "  forge servers organizations-servers-php-versions-destroy --organization <value> --server-param 352034 --php-version 425846",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpVersionsDestroyCmd,
 		Aliases: []string{"ospvd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.versions.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpVersionsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpVersionsDestroyRequest](organizationsServersPhpVersionsDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersPhpVersionsDestroyCmd(cmd *cobra.Command, args []str
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpVersionsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpVersionsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpVersionsDestroyRequest](cmd, organizationsServersPhpVersionsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

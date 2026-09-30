@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseSchemasSynchronizationsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersDatabaseSchemasSynchronizationsStoreCmd initializes the organizations-servers-database-schemas-synchronizations-store command.
@@ -25,9 +24,13 @@ func initOrganizationsServersDatabaseSchemasSynchronizationsStoreCmd(parent *cob
 		Use:     "organizations-servers-database-schemas-synchronizations-store",
 		Short:   "Update database schemas",
 		Long:    "Synchronize all database schemas on the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge databases organizations-servers-database-schemas-synchronizations-store --organization <value> --server 353113",
+		Example: "  forge databases organizations-servers-database-schemas-synchronizations-store --organization <value> --server-param 353113",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseSchemasSynchronizationsStoreCmd,
 		Aliases: []string{"osdsss"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.schemas.synchronizations.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseSchemasSynchronizationsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseSchemasSynchronizationsStoreRequest](organizationsServersDatabaseSchemasSynchronizationsStoreCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersDatabaseSchemasSynchronizationsStoreCmd(cmd *cobra.C
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseSchemasSynchronizationsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseSchemasSynchronizationsStoreCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseSchemasSynchronizationsStoreRequest](cmd, organizationsServersDatabaseSchemasSynchronizationsStoreCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

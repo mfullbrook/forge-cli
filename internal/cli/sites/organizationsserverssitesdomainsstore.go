@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Required: true, Description: "The name of the domain. [required]"},
 	{FlagName: "allow-wildcard-subdomains", Shorthand: "a", FieldPath: "Body.AllowWildcardSubdomains", Kind: flagutil.FlagKindBool, Required: true, Description: "Whether to allow wildcard subdomains for the domain. [required]"},
@@ -29,15 +28,26 @@ func initOrganizationsServersSitesDomainsStoreCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-sites-domains-store",
 		Short:   "Create domain",
 		Long:    "Add a new domain to the site\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-store --organization <value> --server 988008 --site 578046 --name laravel.com --allow-wildcard-subdomains false",
+		Example: "  forge sites organizations-servers-sites-domains-store --organization <value> --server-param 988008 --site 578046 --name laravel.com --allow-wildcard-subdomains=false",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsStoreCmd,
 		Aliases: []string{"ossdst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsStoreRequest](organizationsServersSitesDomainsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-sites-domains-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersSitesDomainsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-sites-domains-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -47,16 +57,14 @@ func runOrganizationsServersSitesDomainsStoreCmd(cmd *cobra.Command, args []stri
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.sites.domains.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsStoreRequest](cmd, organizationsServersSitesDomainsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

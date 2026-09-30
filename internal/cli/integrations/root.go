@@ -9,9 +9,11 @@ import (
 
 func InitIntegrationsRoot(parent *cobra.Command) error {
 	var IntegrationsCmd = &cobra.Command{
-		Use:   "integrations",
-		Short: "Operations for integrations",
-		Long:  "Operations for integrations",
+		Use:         "integrations",
+		Short:       "Operations for integrations",
+		Long:        "Operations for integrations",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

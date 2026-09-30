@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -29,8 +28,12 @@ func initPredefinedRolesIndexCmd(parent *cobra.Command) error {
 		Short:   "List predefined roles",
 		Long:    "Show all predefined roles.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge roles predefined-roles-index",
+		Args:    cobra.NoArgs,
 		RunE:    runPredefinedRolesIndexCmd,
 		Aliases: []string{"pri"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "predefined-roles.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, predefinedRolesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.PredefinedRolesIndexRequest](predefinedRolesIndexCmdMeta); err != nil {
@@ -45,16 +48,11 @@ func runPredefinedRolesIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, predefinedRolesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, predefinedRolesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.PredefinedRolesIndexRequest](cmd, predefinedRolesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersBackgroundProcessesUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "background-process", Shorthand: "b", FieldPath: "BackgroundProcess", Kind: flagutil.FlagKindInt64, Required: true, Description: "The background process ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Required: true, Description: "The name of the background process. [required]"},
 	{FlagName: "config-param", Shorthand: "c", FieldPath: "Body.Config", Kind: flagutil.FlagKindString, Optional: true, Description: "The supervisor configuration of the background process."},
@@ -28,15 +27,26 @@ func initOrganizationsServersBackgroundProcessesUpdateCmd(parent *cobra.Command)
 		Use:     "organizations-servers-background-processes-update",
 		Short:   "Update background process",
 		Long:    "Update the supervisor configuration for a background process.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge background-processes organizations-servers-background-processes-update --organization <value> --server 79619 --background-process 235126 --name <value>",
+		Example: "  forge background-processes organizations-servers-background-processes-update --organization <value> --server-param 79619 --background-process 235126 --name <value>",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersBackgroundProcessesUpdateCmd,
 		Aliases: []string{"osbpu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.background-processes.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersBackgroundProcessesUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersBackgroundProcessesUpdateRequest](organizationsServersBackgroundProcessesUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-background-processes-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersBackgroundProcessesUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-background-processes-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -46,16 +56,14 @@ func runOrganizationsServersBackgroundProcessesUpdateCmd(cmd *cobra.Command, arg
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersBackgroundProcessesUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersBackgroundProcessesUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.background-processes.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersBackgroundProcessesUpdateRequest](cmd, organizationsServersBackgroundProcessesUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

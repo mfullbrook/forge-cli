@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesLogsNginxAccessDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesLogsNginxAccessDestroyCmd(parent *cobra.Comman
 		Use:     "organizations-servers-sites-logs-nginx-access-destroy",
 		Short:   "Delete Nginx access log content",
 		Long:    "Processing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-logs-nginx-access-destroy --organization <value> --server 98954 --site 467884",
+		Example: "  forge sites organizations-servers-sites-logs-nginx-access-destroy --organization <value> --server-param 98954 --site 467884",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesLogsNginxAccessDestroyCmd,
 		Aliases: []string{"osslnad"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.logs.nginx-access.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesLogsNginxAccessDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesLogsNginxAccessDestroyRequest](organizationsServersSitesLogsNginxAccessDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesLogsNginxAccessDestroyCmd(cmd *cobra.Command, a
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesLogsNginxAccessDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesLogsNginxAccessDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesLogsNginxAccessDestroyRequest](cmd, organizationsServersSitesLogsNginxAccessDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -15,7 +15,7 @@ import (
 )
 
 var providersSizesIndexCmdMeta = []flagutil.FlagMeta{
-	{FlagName: "provider", FieldPath: "Provider", Kind: flagutil.FlagKindInt64, Required: true, Description: "The provider ID [required]"},
+	{FlagName: "provider", Shorthand: "p", FieldPath: "Provider", Kind: flagutil.FlagKindInt64, Required: true, Description: "The provider ID [required]"},
 	{FlagName: "page-size", FieldPath: "PageSize", Kind: flagutil.FlagKindInt64, Optional: true, HasDefault: true, DefaultInt: 30, Description: "The number of results that will be returned per page."},
 	{FlagName: "page-cursor", FieldPath: "PageCursor", Kind: flagutil.FlagKindString, Optional: true, Description: "The cursor to start the pagination from."},
 }
@@ -23,16 +23,28 @@ var providersSizesIndexCmdMeta = []flagutil.FlagMeta{
 // initProvidersSizesIndexCmd initializes the providers-sizes-index command.
 func initProvidersSizesIndexCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "sizes-index",
+		Use:     "sizes-index [provider]",
 		Short:   "List provider sizes",
 		Long:    "Show all providers\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge providers sizes-index --provider 465595",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runProvidersSizesIndexCmd,
 		Aliases: []string{"si"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "providers.sizes.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, providersSizesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.ProvidersSizesIndexRequest](providersSizesIndexCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for providers-sizes-index: %w", err)
+	}
+	if err := flagutil.DeclarePositionalFlag(cmd, "provider", "The provider ID (or pass it as the [provider] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "provider", Summary: "The provider ID", Required: true, SatisfiedBy: []string{"provider"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for providers-sizes-index: %w", err)
 	}
 	parent.AddCommand(cmd)
 	return nil
@@ -43,16 +55,14 @@ func runProvidersSizesIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, providersSizesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, providersSizesIndexCmdMeta); err != nil {
-			return err
-		}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.ProvidersSizesIndexRequest](cmd, providersSizesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesDestroyCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-sites-destroy",
 		Short:   "Delete site",
 		Long:    "Remove a site from the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-destroy --organization <value> --server 157712 --site 582492",
+		Example: "  forge sites organizations-servers-sites-destroy --organization <value> --server-param 157712 --site 582492",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDestroyCmd,
 		Aliases: []string{"ossd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDestroyRequest](organizationsServersSitesDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesDestroyCmd(cmd *cobra.Command, args []string) e
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDestroyRequest](cmd, organizationsServersSitesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

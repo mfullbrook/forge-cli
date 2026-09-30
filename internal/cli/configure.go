@@ -3,11 +3,14 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/config"
-	"github.com/mfullbrook/forge-cli/internal/output"
+	"github.com/mfullbrook/forge-cli/internal/flagutil"
+	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/usage"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -24,9 +27,10 @@ Settings are stored in ~/.config/forge/config.yaml.
 Secret credentials are stored in the OS keychain when available.
 
 You can also set values via environment variables with the FORGE_ prefix
-(e.g., FORGE_API_KEY) or pass them as flags to individual commands.
+(e.g., FORGE_HTTP) or pass them as flags to individual commands.
 
 Priority: CLI flags > environment variables > OS keychain > config file`,
+		Args: cobra.NoArgs,
 		RunE: runConfigureCmd,
 	}
 	parent.AddCommand(cmd)
@@ -38,55 +42,41 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	// Agent mode: reject interactive configure — agents should use env vars/flags.
-	if output.IsAgentMode() {
-		return output.AgentModeError(cmd,
-			"configure_blocked",
-			"the 'configure' command is interactive and cannot be used in agent mode",
-			[]string{
-				fmt.Sprintf("Set credentials via environment variables (prefix: %s_)", "FORGE"),
-				"Pass credentials directly as CLI flags for each command",
-				fmt.Sprintf("Run '%s whoami' to verify current authentication", "forge"),
-			},
-		)
+	if dryRunLocalNoop(cmd, "configure changes local settings only (no API request); nothing was changed.") {
+		return nil
 	}
-
 	cfg := config.GetConfig()
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
-	if noInteractive, _ := cmd.Flags().GetBool("no-interactive"); noInteractive {
+
+	keychainStored := false
+
+	formMode := interactive.Resolve(cmd).FormMode()
+	if formMode == interactive.FormOff {
 		changed := false
 		if f := cmd.Flags().Lookup("http"); f != nil && f.Changed {
 			v, _ := cmd.Flags().GetString("http")
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("http", v); err != nil {
-					cfg.Security.Http = v // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Http = v // no keyring, store in config
+			if config.StoreSecret("http", v, &cfg.Security.Http) == nil {
+				keychainStored = true
 			}
 			changed = true
 		}
 		if f := cmd.Flags().Lookup("oauth2"); f != nil && f.Changed {
 			v, _ := cmd.Flags().GetString("oauth2")
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("oauth2", v); err != nil {
-					cfg.Security.Oauth2 = v // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Oauth2 = v // no keyring, store in config
+			if config.StoreSecret("oauth2", v, &cfg.Security.Oauth2) == nil {
+				keychainStored = true
 			}
 			changed = true
 		}
 
 		if !changed {
-			return fmt.Errorf("no flags provided; use flags to set values non-interactively, or remove --no-interactive")
+			return flagutil.WithCLIValidation(fmt.Errorf("no flags provided; use flags to store values in %s, or pass --interactive to open the form", config.GetConfigPath()))
 		}
 	} else {
 		var authHttp string
 		var authOauth2 string
-		accessible := !configureIsInteractive(cmd)
+		accessible := formMode == interactive.FormAccessible
 
 		var groups []*huh.Group
 		securityFields := []huh.Field{
@@ -94,13 +84,13 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 				Title("HTTP Bearer").
 				Description("--http").
 				EchoMode(huh.EchoModePassword).
-				Placeholder(maskSecret(cfg.Security.Http)).
+				Placeholder(maskSecret(config.GetStoredSecret("http", cfg.Security.Http))).
 				Value(&authHttp),
 			huh.NewInput().
 				Title("OAuth2 Authorization").
 				Description("--oauth2").
 				EchoMode(huh.EchoModePassword).
-				Placeholder(maskSecret(cfg.Security.Oauth2)).
+				Placeholder(maskSecret(config.GetStoredSecret("oauth2", cfg.Security.Oauth2))).
 				Value(&authOauth2),
 		}
 		groups = append(groups, huh.NewGroup(securityFields...).Title("Authentication"))
@@ -137,22 +127,14 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("configure: %w", err)
 		}
 		if authHttp != "" {
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("http", authHttp); err != nil {
-					cfg.Security.Http = authHttp // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Http = authHttp // no keyring, store in config
+			if config.StoreSecret("http", authHttp, &cfg.Security.Http) == nil {
+				keychainStored = true
 			}
 		}
 
 		if authOauth2 != "" {
-			if config.KeyringAvailable() {
-				if err := config.SetKeyringValue("oauth2", authOauth2); err != nil {
-					cfg.Security.Oauth2 = authOauth2 // keyring failed, store in config
-				}
-			} else {
-				cfg.Security.Oauth2 = authOauth2 // no keyring, store in config
+			if config.StoreSecret("oauth2", authOauth2, &cfg.Security.Oauth2) == nil {
+				keychainStored = true
 			}
 		}
 		if !accessible {
@@ -170,23 +152,34 @@ func runConfigureCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	out := cmd.OutOrStdout()
-	if config.KeyringAvailable() {
+	if keychainStored {
 		fmt.Fprintln(out, "Secret credentials stored in OS keychain")
 	}
 	fmt.Fprintf(out, "Configuration saved to %s\n", config.GetConfigPath())
 	return nil
 }
 
-// configureIsInteractive returns true when the configure command should use rich TUI forms.
-// Returns false in agent mode — agents should never see TUI rendering.
-func configureIsInteractive(cmd *cobra.Command) bool {
-	if noInteractive, _ := cmd.Flags().GetBool("no-interactive"); noInteractive {
+// dryRunLocalNoop implements the append-safe dry-run contract for local
+// mutation commands: no prompts, keychain access, or filesystem writes. The
+// machine preview protocol still receives an explicit local no-op record —
+// silence would be indistinguishable from a failed preview.
+func dryRunLocalNoop(cmd *cobra.Command, message string) bool {
+	if !client.IsDryRun(cmd) {
 		return false
 	}
-	if output.IsAgentMode() {
-		return false
+	if client.IsJSONDryRun(cmd) {
+		enc := json.NewEncoder(cmd.OutOrStdout())
+		enc.SetEscapeHTML(false)
+		_ = enc.Encode(struct {
+			DryRun  bool   `json:"dry_run"`
+			Local   bool   `json:"local"`
+			Command string `json:"command"`
+			Message string `json:"message"`
+		}{DryRun: true, Local: true, Command: cmd.CommandPath(), Message: message})
+	} else {
+		fmt.Fprintln(cmd.ErrOrStderr(), "[DRY-RUN] "+message)
 	}
-	return term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+	return true
 }
 
 // configureFormTheme builds the form theme for the configure command.

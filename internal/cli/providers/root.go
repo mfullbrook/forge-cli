@@ -9,9 +9,11 @@ import (
 
 func InitProvidersRoot(parent *cobra.Command) error {
 	var ProvidersCmd = &cobra.Command{
-		Use:   "providers",
-		Short: "Operations for providers",
-		Long:  "Operations for providers",
+		Use:         "providers",
+		Short:       "Operations for providers",
+		Long:        "Operations for providers",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

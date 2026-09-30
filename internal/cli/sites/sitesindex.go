@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -28,7 +27,11 @@ func initSitesIndexCmd(parent *cobra.Command) error {
 		Short:   "List sites",
 		Long:    "Show all sites the current token has access to.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge sites index",
+		Args:    cobra.NoArgs,
 		RunE:    runSitesIndexCmd,
+		Annotations: map[string]string{
+			"speakeasy_operation": "sites.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, sitesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.SitesIndexRequest](sitesIndexCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runSitesIndexCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, sitesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, sitesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.SitesIndexRequest](cmd, sitesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

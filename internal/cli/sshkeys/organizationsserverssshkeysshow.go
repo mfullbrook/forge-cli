@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSSHKeysShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "key", Shorthand: "k", FieldPath: "Key", Kind: flagutil.FlagKindInt64, Required: true, Description: "The key ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSshKeysShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-ssh-keys-show",
 		Short:   "Get server SSH key",
 		Long:    "Get a specific SSH key associated with the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge SSH-keys organizations-servers-ssh-keys-show --organization <value> --server 383622 --key 444641",
+		Example: "  forge SSH-keys organizations-servers-ssh-keys-show --organization <value> --server-param 383622 --key 444641",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSshKeysShowCmd,
 		Aliases: []string{"ossks"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.ssh-keys.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSSHKeysShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSSHKeysShowRequest](organizationsServersSSHKeysShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSshKeysShowCmd(cmd *cobra.Command, args []string) er
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSSHKeysShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSSHKeysShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSSHKeysShowRequest](cmd, organizationsServersSSHKeysShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

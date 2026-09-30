@@ -9,9 +9,11 @@ import (
 
 func InitScheduledJobsRoot(parent *cobra.Command) error {
 	var ScheduledJobsCmd = &cobra.Command{
-		Use:   "scheduled-jobs",
-		Short: "Operations for scheduled-jobs",
-		Long:  "Operations for scheduled-jobs",
+		Use:         "scheduled-jobs",
+		Short:       "Operations for scheduled-jobs",
+		Long:        "Operations for scheduled-jobs",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

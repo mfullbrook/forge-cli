@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesCommandsShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "command", Shorthand: "c", FieldPath: "Command", Kind: flagutil.FlagKindInt64, Required: true, Description: "The command ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesCommandsShowCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-sites-commands-show",
 		Short:   "Get command",
 		Long:    "Get a specific command run.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge commands organizations-servers-sites-commands-show --organization <value> --server 847807 --site 473827 --command 838200",
+		Example: "  forge commands organizations-servers-sites-commands-show --organization <value> --server-param 847807 --site 473827 --command 838200",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesCommandsShowCmd,
 		Aliases: []string{"osscs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.commands.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesCommandsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesCommandsShowRequest](organizationsServersSitesCommandsShowCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesCommandsShowCmd(cmd *cobra.Command, args []stri
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesCommandsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesCommandsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesCommandsShowRequest](cmd, organizationsServersSitesCommandsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

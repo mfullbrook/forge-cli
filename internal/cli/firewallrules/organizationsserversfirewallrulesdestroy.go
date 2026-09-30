@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersFirewallRulesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "rule", Shorthand: "r", FieldPath: "Rule", Kind: flagutil.FlagKindInt64, Required: true, Description: "The rule ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersFirewallRulesDestroyCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-firewall-rules-destroy",
 		Short:   "Delete server firewall rule",
 		Long:    "Remove a firewall rule from the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge firewall-rules organizations-servers-firewall-rules-destroy --organization <value> --server 259490 --rule 580548",
+		Example: "  forge firewall-rules organizations-servers-firewall-rules-destroy --organization <value> --server-param 259490 --rule 580548",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersFirewallRulesDestroyCmd,
 		Aliases: []string{"osfrd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.firewall-rules.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersFirewallRulesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersFirewallRulesDestroyRequest](organizationsServersFirewallRulesDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersFirewallRulesDestroyCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersFirewallRulesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersFirewallRulesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersFirewallRulesDestroyRequest](cmd, organizationsServersFirewallRulesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

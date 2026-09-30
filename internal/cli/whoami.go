@@ -5,6 +5,7 @@ package cli
 import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/config"
+	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/usage"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +25,7 @@ Sources are shown as:
   [unset]   - Not configured
 
 Credential values are masked for security.`,
+		Args: cobra.NoArgs,
 		RunE: runWhoamiCmd,
 	}
 	parent.AddCommand(cmd)
@@ -35,6 +37,26 @@ func runWhoamiCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
+
+	if output.IsMachineMode(cmd) {
+		info := map[string]any{
+			"config_file":        config.GetConfigPath(),
+			"environment_prefix": "FORGE_",
+		}
+		credentials := map[string]any{}
+		{
+			value, source := config.ResolveSecurityCredential(cmd, "http")
+			credentials["http"] = map[string]any{"source": source, "value": maskSecret(value)}
+		}
+		{
+			value, source := config.ResolveSecurityCredential(cmd, "oauth2")
+			credentials["oauth2"] = map[string]any{"source": source, "value": maskSecret(value)}
+		}
+		info["credentials"] = credentials
+
+		return output.LocalResult(cmd, info)
+	}
+
 	out := cmd.OutOrStdout()
 	fmt.Fprintln(out, "Configuration")
 	fmt.Fprintln(out, "=============")

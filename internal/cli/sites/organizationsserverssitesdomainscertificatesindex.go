@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsCertificatesIndexCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesDomainsCertificatesIndexCmd(parent *cobra.Comm
 		Use:     "organizations-servers-sites-domains-certificates-index",
 		Short:   "List domain certificates",
 		Long:    "List all certificates for a given domain.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-certificates-index --organization <value> --server 673953 --site 439460 --domain-record 839619",
+		Example: "  forge sites organizations-servers-sites-domains-certificates-index --organization <value> --server-param 673953 --site 439460 --domain-record 839619",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsCertificatesIndexCmd,
 		Aliases: []string{"ossdci"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.certificates.index",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsCertificatesIndexCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsCertificatesIndexRequest](organizationsServersSitesDomainsCertificatesIndexCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesDomainsCertificatesIndexCmd(cmd *cobra.Command,
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsCertificatesIndexCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsCertificatesIndexCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsCertificatesIndexRequest](cmd, organizationsServersSitesDomainsCertificatesIndexCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

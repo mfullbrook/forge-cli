@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDeployKeyDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesDeployKeyDestroyCmd(parent *cobra.Command) err
 		Use:     "organizations-servers-sites-deploy-key-destroy",
 		Short:   "Delete deploy key",
 		Long:    "Remove the deploy key for the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge deployments organizations-servers-sites-deploy-key-destroy --organization <value> --server 424383 --site 279315",
+		Example: "  forge deployments organizations-servers-sites-deploy-key-destroy --organization <value> --server-param 424383 --site 279315",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDeployKeyDestroyCmd,
 		Aliases: []string{"ossdkd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.deploy-key.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDeployKeyDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDeployKeyDestroyRequest](organizationsServersSitesDeployKeyDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesDeployKeyDestroyCmd(cmd *cobra.Command, args []
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDeployKeyDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDeployKeyDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDeployKeyDestroyRequest](cmd, organizationsServersSitesDeployKeyDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

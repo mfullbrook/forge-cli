@@ -40,18 +40,37 @@ var organizationsServersStoreCmdMeta = []flagutil.FlagMeta{
 // initOrganizationsServersStoreCmd initializes the organizations-servers-store command.
 func initOrganizationsServersStoreCmd(parent *cobra.Command) error {
 	var cmd = &cobra.Command{
-		Use:     "organizations-servers-store",
+		Use:     "organizations-servers-store [organization]",
 		Short:   "Create server",
 		Long:    "Create a new server in the organization. Supports both standard cloud providers\nand custom VPS configurations.\n\nProcessing mode: <small><code>async</code></small>",
 		Example: "  forge servers organizations-servers-store --organization <value> --name <value> --provider <value> --type app --ubuntu-version 22.04",
+		Args:    flagutil.PositionalFlagArgs,
 		RunE:    runOrganizationsServersStoreCmd,
 		Aliases: []string{"osst"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersStoreRequest](organizationsServersStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
+	if err := flagutil.DeclarePositionalFlag(cmd, "organization", "The organization slug (or pass it as the [organization] argument)", true); err != nil {
+		return err
+	}
+	if err := interactive.Declare(cmd, interactive.CommandSpec{Args: []interactive.ArgSpec{
+		{Name: "organization", Summary: "The organization slug", Required: true, SatisfiedBy: []string{"organization"}},
+	}}); err != nil {
+		return fmt.Errorf("declare interactive arguments for organizations-servers-store: %w", err)
+	}
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -61,16 +80,17 @@ func runOrganizationsServersStoreCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.store")
+	}
+	if err := flagutil.ResolvePositionalFlag(cmd, args); err != nil {
+		return err
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersStoreRequest](cmd, organizationsServersStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

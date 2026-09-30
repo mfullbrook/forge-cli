@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesRedirectRulesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "redirect-rule", Shorthand: "r", FieldPath: "RedirectRule", Kind: flagutil.FlagKindInt64, Required: true, Description: "The redirect rule ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesRedirectRulesDestroyCmd(parent *cobra.Command)
 		Use:     "organizations-servers-sites-redirect-rules-destroy",
 		Short:   "Delete site redirect rule",
 		Long:    "Remove a redirect rule from the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge redirect-rules organizations-servers-sites-redirect-rules-destroy --organization <value> --server 280815 --site 178475 --redirect-rule 564958",
+		Example: "  forge redirect-rules organizations-servers-sites-redirect-rules-destroy --organization <value> --server-param 280815 --site 178475 --redirect-rule 564958",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesRedirectRulesDestroyCmd,
 		Aliases: []string{"ossrrd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.redirect-rules.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesRedirectRulesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesRedirectRulesDestroyRequest](organizationsServersSitesRedirectRulesDestroyCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesRedirectRulesDestroyCmd(cmd *cobra.Command, arg
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesRedirectRulesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesRedirectRulesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesRedirectRulesDestroyRequest](cmd, organizationsServersSitesRedirectRulesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

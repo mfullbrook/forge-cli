@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersKeyUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersKeyUpdateCmd initializes the organizations-servers-key-update command.
@@ -25,9 +24,13 @@ func initOrganizationsServersKeyUpdateCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-key-update",
 		Short:   "Update server public SSH key",
 		Long:    "Regenerate the SSH key pair for the server and return the new public key.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge SSH-keys organizations-servers-key-update --organization <value> --server 960192",
+		Example: "  forge SSH-keys organizations-servers-key-update --organization <value> --server-param 960192",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersKeyUpdateCmd,
 		Aliases: []string{"osku"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.key.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersKeyUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersKeyUpdateRequest](organizationsServersKeyUpdateCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersKeyUpdateCmd(cmd *cobra.Command, args []string) erro
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersKeyUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersKeyUpdateCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersKeyUpdateRequest](cmd, organizationsServersKeyUpdateCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

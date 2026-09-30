@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDeploymentsPushToDeployDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesDeploymentsPushToDeployDestroyCmd(parent *cobr
 		Use:     "organizations-servers-sites-deployments-push-to-deploy-destroy",
 		Short:   "Delete push to deploy configuration",
 		Long:    "Disable push to deploy for the site.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge deployments organizations-servers-sites-deployments-push-to-deploy-destroy --organization <value> --server 628491 --site 776034",
+		Example: "  forge deployments organizations-servers-sites-deployments-push-to-deploy-destroy --organization <value> --server-param 628491 --site 776034",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDeploymentsPushToDeployDestroyCmd,
 		Aliases: []string{"ossdptdd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.deployments.push-to-deploy.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDeploymentsPushToDeployDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDeploymentsPushToDeployDestroyRequest](organizationsServersSitesDeploymentsPushToDeployDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesDeploymentsPushToDeployDestroyCmd(cmd *cobra.Co
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDeploymentsPushToDeployDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDeploymentsPushToDeployDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDeploymentsPushToDeployDestroyRequest](cmd, organizationsServersSitesDeploymentsPushToDeployDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

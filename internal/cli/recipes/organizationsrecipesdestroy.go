@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initOrganizationsRecipesDestroyCmd(parent *cobra.Command) error {
 		Short:   "Delete recipe",
 		Long:    "Delete a recipe from the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge recipes organizations-recipes-destroy --organization <value> --recipe 455109",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsRecipesDestroyCmd,
 		Aliases: []string{"ord"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.recipes.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsRecipesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsRecipesDestroyRequest](organizationsRecipesDestroyCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsRecipesDestroyCmd(cmd *cobra.Command, args []string) error 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsRecipesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsRecipesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsRecipesDestroyRequest](cmd, organizationsRecipesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

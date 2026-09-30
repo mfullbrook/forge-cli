@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersServicesPostgresActionsStoreCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "action", Shorthand: "a", FieldPath: "Body.Action", Kind: flagutil.FlagKindEnum, Required: true, EnumValues: []string{"reboot", "stop"}, Description: "| |\n|---|\n| `reboot` <br/> Reboot the Postgres service |\n| `stop` <br/> Stop the Postgres service | (options: reboot, stop) [required]"},
 }
 
@@ -26,15 +25,26 @@ func initOrganizationsServersServicesPostgresActionsStoreCmd(parent *cobra.Comma
 		Use:     "organizations-servers-services-postgres-actions-store",
 		Short:   "Perform Postgres action",
 		Long:    "Run an action on the Postgres service.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge servers organizations-servers-services-postgres-actions-store --organization <value> --server 889010 --action stop",
+		Example: "  forge servers organizations-servers-services-postgres-actions-store --organization <value> --server-param 889010 --action stop",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersServicesPostgresActionsStoreCmd,
 		Aliases: []string{"osspast"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.services.postgres.actions.store",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersServicesPostgresActionsStoreCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersServicesPostgresActionsStoreRequest](organizationsServersServicesPostgresActionsStoreCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-services-postgres-actions-store: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersServicesPostgresActionsStoreCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-services-postgres-actions-store: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -44,16 +54,14 @@ func runOrganizationsServersServicesPostgresActionsStoreCmd(cmd *cobra.Command, 
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersServicesPostgresActionsStoreCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersServicesPostgresActionsStoreCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.services.postgres.actions.store")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersServicesPostgresActionsStoreRequest](cmd, organizationsServersServicesPostgresActionsStoreCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

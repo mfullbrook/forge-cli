@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDomainsCertificatesDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "domain-record", FieldPath: "DomainRecord", Kind: flagutil.FlagKindInt64, Required: true, Description: "The domain record ID [required]"},
 	{FlagName: "certificate", Shorthand: "c", FieldPath: "Certificate", Kind: flagutil.FlagKindInt64, Required: true, Description: "The certificate ID [required]"},
@@ -28,9 +27,13 @@ func initOrganizationsServersSitesDomainsCertificatesDestroyCmd(parent *cobra.Co
 		Use:     "organizations-servers-sites-domains-certificates-destroy",
 		Short:   "Delete domain certificate",
 		Long:    "Delete a specific certificate for a given domain.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge sites organizations-servers-sites-domains-certificates-destroy --organization <value> --server 555092 --site 811902 --domain-record 664430 --certificate 108812",
+		Example: "  forge sites organizations-servers-sites-domains-certificates-destroy --organization <value> --server-param 555092 --site 811902 --domain-record 664430 --certificate 108812",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDomainsCertificatesDestroyCmd,
 		Aliases: []string{"ossdcd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.domains.certificates.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDomainsCertificatesDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDomainsCertificatesDestroyRequest](organizationsServersSitesDomainsCertificatesDestroyCmdMeta); err != nil {
@@ -45,16 +48,11 @@ func runOrganizationsServersSitesDomainsCertificatesDestroyCmd(cmd *cobra.Comman
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDomainsCertificatesDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDomainsCertificatesDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDomainsCertificatesDestroyRequest](cmd, organizationsServersSitesDomainsCertificatesDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

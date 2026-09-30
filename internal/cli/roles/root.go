@@ -9,9 +9,11 @@ import (
 
 func InitRolesRoot(parent *cobra.Command) error {
 	var RolesCmd = &cobra.Command{
-		Use:   "roles",
-		Short: "Operations for roles",
-		Long:  "Operations for roles",
+		Use:         "roles",
+		Short:       "Operations for roles",
+		Long:        "Operations for roles",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersPhpSiteVersionShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 }
 
 // initOrganizationsServersPhpSiteVersionShowCmd initializes the organizations-servers-php-site-version-show command.
@@ -25,9 +24,13 @@ func initOrganizationsServersPhpSiteVersionShowCmd(parent *cobra.Command) error 
 		Use:     "organizations-servers-php-site-version-show",
 		Short:   "Get PHP site version",
 		Long:    "Show the PHP site version which has been set for the server.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-php-site-version-show --organization <value> --server 133726",
+		Example: "  forge servers organizations-servers-php-site-version-show --organization <value> --server-param 133726",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersPhpSiteVersionShowCmd,
 		Aliases: []string{"ospsvs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.php.site-version.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersPhpSiteVersionShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersPhpSiteVersionShowRequest](organizationsServersPhpSiteVersionShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsServersPhpSiteVersionShowCmd(cmd *cobra.Command, args []str
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersPhpSiteVersionShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersPhpSiteVersionShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersPhpSiteVersionShowRequest](cmd, organizationsServersPhpSiteVersionShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

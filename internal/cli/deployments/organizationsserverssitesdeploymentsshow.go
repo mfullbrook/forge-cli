@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDeploymentsShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 	{FlagName: "deployment", FieldPath: "Deployment", Kind: flagutil.FlagKindInt64, Required: true, Description: "The deployment ID [required]"},
 }
@@ -27,9 +26,13 @@ func initOrganizationsServersSitesDeploymentsShowCmd(parent *cobra.Command) erro
 		Use:     "organizations-servers-sites-deployments-show",
 		Short:   "Get deployment",
 		Long:    "Show a specific deployment.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge deployments organizations-servers-sites-deployments-show --organization <value> --server 652395 --site 386574 --deployment 498873",
+		Example: "  forge deployments organizations-servers-sites-deployments-show --organization <value> --server-param 652395 --site 386574 --deployment 498873",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDeploymentsShowCmd,
 		Aliases: []string{"ossds"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.deployments.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDeploymentsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDeploymentsShowRequest](organizationsServersSitesDeploymentsShowCmdMeta); err != nil {
@@ -44,16 +47,11 @@ func runOrganizationsServersSitesDeploymentsShowCmd(cmd *cobra.Command, args []s
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDeploymentsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDeploymentsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDeploymentsShowRequest](cmd, organizationsServersSitesDeploymentsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersUpdateCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "name", Shorthand: "n", FieldPath: "Body.Name", Kind: flagutil.FlagKindString, Optional: true, Description: "The name of the server."},
 	{FlagName: "ip-address", Shorthand: "i", FieldPath: "Body.IPAddress", Kind: flagutil.FlagKindString, Optional: true, Description: "The IP address of the server."},
 	{FlagName: "private-ip-address", Shorthand: "p", FieldPath: "Body.PrivateIPAddress", Kind: flagutil.FlagKindString, Optional: true, Description: "The private IP address of the server."},
@@ -30,15 +29,26 @@ func initOrganizationsServersUpdateCmd(parent *cobra.Command) error {
 		Use:     "organizations-servers-update",
 		Short:   "Update server",
 		Long:    "Update a server's details such as name, IP address, timezone, and tags.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge servers organizations-servers-update --organization <value> --server 773168",
+		Example: "  forge servers organizations-servers-update --organization <value> --server-param 773168",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersUpdateCmd,
 		Aliases: []string{"osu"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.update",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersUpdateCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersUpdateRequest](organizationsServersUpdateCmdMeta); err != nil {
 		return fmt.Errorf("invalid metadata for organizations-servers-update: %w", err)
 	}
-	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin.")
+	cmd.Flags().String("body", "", "Request body as JSON (alternative to individual flags). Can also be provided via stdin; @path reads a file, @- reads stdin to EOF. Use --schema to print the exact JSON Schema.")
+	_ = flagutil.AnnotatePromptFlag(cmd, "body", flagutil.PromptFlagSpec{Kind: "json", BodyFlag: true})
+	cmd.Annotations[flagutil.AnnotationWholeBodyFlag] = "body"
+	if err := flagutil.AnnotateBodyFields(cmd, organizationsServersUpdateCmdMeta, "Body", "body"); err != nil {
+		return fmt.Errorf("annotate body fields for organizations-servers-update: %w", err)
+	}
+	cmd.Flags().Bool("schema", false, "Print the exact JSON Schema of the request body and exit")
+	_ = flagutil.AnnotatePromptFlag(cmd, "schema", flagutil.PromptFlagSpec{Kind: "bool", DocSurface: true})
 	parent.AddCommand(cmd)
 	return nil
 }
@@ -48,16 +58,14 @@ func runOrganizationsServersUpdateCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersUpdateCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersUpdateCmdMeta); err != nil {
-			return err
-		}
+	if requested, _ := cmd.Flags().GetBool("schema"); requested {
+		return usage.EmitBodySchema(cmd.OutOrStdout(), "organizations.servers.update")
 	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersUpdateRequest](cmd, organizationsServersUpdateCmdMeta, "Body", "body")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

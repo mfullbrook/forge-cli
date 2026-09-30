@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initProvidersRegionsShowCmd(parent *cobra.Command) error {
 		Short:   "Get provider region",
 		Long:    "Show the provider region.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge providers regions-show --provider 960758 --provider-region 440898",
+		Args:    cobra.NoArgs,
 		RunE:    runProvidersRegionsShowCmd,
 		Aliases: []string{"rs"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "providers.regions.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, providersRegionsShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.ProvidersRegionsShowRequest](providersRegionsShowCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runProvidersRegionsShowCmd(cmd *cobra.Command, args []string) error {
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, providersRegionsShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, providersRegionsShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.ProvidersRegionsShowRequest](cmd, providersRegionsShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

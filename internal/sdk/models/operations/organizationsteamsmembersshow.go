@@ -95,7 +95,14 @@ func (u OrganizationsTeamsMembersShowIncluded) IsUnknown() bool {
 	return u.Type == OrganizationsTeamsMembersShowIncludedTypeUnknown
 }
 
-func (u *OrganizationsTeamsMembersShowIncluded) UnmarshalJSON(data []byte) error {
+func (u *OrganizationsTeamsMembersShowIncluded) UnmarshalJSON(data []byte) (err error) {
+	previous := *u
+	*u = OrganizationsTeamsMembersShowIncluded{}
+	defer func() {
+		if err != nil {
+			*u = previous
+		}
+	}()
 
 	type discriminator struct {
 		Type string `json:"type"`

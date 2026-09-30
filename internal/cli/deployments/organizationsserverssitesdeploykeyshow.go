@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersSitesDeployKeyShowCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "site", FieldPath: "Site", Kind: flagutil.FlagKindInt64, Required: true, Description: "The site ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersSitesDeployKeyShowCmd(parent *cobra.Command) error 
 		Use:     "organizations-servers-sites-deploy-key-show",
 		Short:   "Get deploy key",
 		Long:    "Get the deploy key for the site.\n\nProcessing mode: <small><code>sync</code></small>",
-		Example: "  forge deployments organizations-servers-sites-deploy-key-show --organization <value> --server 195039 --site 780340",
+		Example: "  forge deployments organizations-servers-sites-deploy-key-show --organization <value> --server-param 195039 --site 780340",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersSitesDeployKeyShowCmd,
 		Aliases: []string{"ossdks"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.sites.deploy-key.show",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersSitesDeployKeyShowCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersSitesDeployKeyShowRequest](organizationsServersSitesDeployKeyShowCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersSitesDeployKeyShowCmd(cmd *cobra.Command, args []str
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersSitesDeployKeyShowCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersSitesDeployKeyShowCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersSitesDeployKeyShowRequest](cmd, organizationsServersSitesDeployKeyShowCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

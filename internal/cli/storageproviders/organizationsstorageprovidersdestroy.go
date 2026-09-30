@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -26,8 +25,12 @@ func initOrganizationsStorageProvidersDestroyCmd(parent *cobra.Command) error {
 		Short:   "Delete storage provider",
 		Long:    "Delete a storage provider from the organization.\n\nProcessing mode: <small><code>sync</code></small>",
 		Example: "  forge storage-providers organizations-storage-providers-destroy --organization <value> --storage-configuration 141884",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsStorageProvidersDestroyCmd,
 		Aliases: []string{"ospd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.storage-providers.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsStorageProvidersDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsStorageProvidersDestroyRequest](organizationsStorageProvidersDestroyCmdMeta); err != nil {
@@ -42,16 +45,11 @@ func runOrganizationsStorageProvidersDestroyCmd(cmd *cobra.Command, args []strin
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsStorageProvidersDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsStorageProvidersDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsStorageProvidersDestroyRequest](cmd, organizationsStorageProvidersDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}

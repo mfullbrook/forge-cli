@@ -9,9 +9,11 @@ import (
 
 func InitSSHKeysRoot(parent *cobra.Command) error {
 	var SSHKeysCmd = &cobra.Command{
-		Use:   "SSH-keys",
-		Short: "Operations for SSH-keys",
-		Long:  "Operations for SSH-keys",
+		Use:         "SSH-keys",
+		Short:       "Operations for SSH-keys",
+		Long:        "Operations for SSH-keys",
+		Args:        cobra.NoArgs,
+		Annotations: map[string]string{"speakeasy_cli_group": "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if usage.UsageRequested(cmd) {
 				return usage.EmitSchema(cmd, cmd.OutOrStdout())

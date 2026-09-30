@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/mfullbrook/forge-cli/internal/client"
 	"github.com/mfullbrook/forge-cli/internal/flagutil"
-	"github.com/mfullbrook/forge-cli/internal/interactive"
 	"github.com/mfullbrook/forge-cli/internal/output"
 	"github.com/mfullbrook/forge-cli/internal/sdk"
 	"github.com/mfullbrook/forge-cli/internal/sdk/models/operations"
@@ -16,7 +15,7 @@ import (
 
 var organizationsServersDatabaseBackupsDestroyCmdMeta = []flagutil.FlagMeta{
 	{FlagName: "organization", FieldPath: "Organization", Kind: flagutil.FlagKindString, Required: true, Description: "The organization slug [required]"},
-	{FlagName: "server", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
+	{FlagName: "server-param", Shorthand: "s", FieldPath: "Server", Kind: flagutil.FlagKindInt64, Required: true, Description: "The server ID [required]"},
 	{FlagName: "backup-configuration", Shorthand: "b", FieldPath: "BackupConfiguration", Kind: flagutil.FlagKindInt64, Required: true, Description: "The backup configuration ID [required]"},
 }
 
@@ -26,9 +25,13 @@ func initOrganizationsServersDatabaseBackupsDestroyCmd(parent *cobra.Command) er
 		Use:     "organizations-servers-database-backups-destroy",
 		Short:   "Delete backup configuration",
 		Long:    "Delete a backup configuration from the server.\n\nProcessing mode: <small><code>async</code></small>",
-		Example: "  forge backups organizations-servers-database-backups-destroy --organization <value> --server 124800 --backup-configuration 460960",
+		Example: "  forge backups organizations-servers-database-backups-destroy --organization <value> --server-param 124800 --backup-configuration 460960",
+		Args:    cobra.NoArgs,
 		RunE:    runOrganizationsServersDatabaseBackupsDestroyCmd,
 		Aliases: []string{"osdbd"},
+		Annotations: map[string]string{
+			"speakeasy_operation": "organizations.servers.database.backups.destroy",
+		},
 	}
 	flagutil.RegisterFlags(cmd, organizationsServersDatabaseBackupsDestroyCmdMeta)
 	if err := flagutil.ValidateMeta[operations.OrganizationsServersDatabaseBackupsDestroyRequest](organizationsServersDatabaseBackupsDestroyCmdMeta); err != nil {
@@ -43,16 +46,11 @@ func runOrganizationsServersDatabaseBackupsDestroyCmd(cmd *cobra.Command, args [
 	if usage.UsageRequested(cmd) {
 		return usage.EmitSchema(cmd, cmd.OutOrStdout())
 	}
-	if interactive.ShouldPrompt(cmd, organizationsServersDatabaseBackupsDestroyCmdMeta) {
-		if err := interactive.PromptAndSetFlags(cmd, organizationsServersDatabaseBackupsDestroyCmdMeta); err != nil {
-			return err
-		}
-	}
 	req, err := flagutil.BuildRequest[operations.OrganizationsServersDatabaseBackupsDestroyRequest](cmd, organizationsServersDatabaseBackupsDestroyCmdMeta, "", "")
 	if err != nil {
-		return err
+		return flagutil.WithCLIValidation(err)
 	}
-	s, err := client.NewClient(cmd)
+	s, err := client.NewClient(cmd, "Oauth2")
 	if err != nil {
 		return err
 	}
